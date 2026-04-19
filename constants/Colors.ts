@@ -1,12 +1,14 @@
-const tintColorLight = '#2f95dc';
-const tintColorDark = '#fff';
+import { Theme } from './Theme';
+
+const tintColorLight = Theme.primary;
+const tintColorDark = Theme.primary;
 
 export default {
   light: {
-    text: '#000',
-    background: '#fff',
+    text: Theme.text,
+    background: Theme.background,
     tint: tintColorLight,
-    tabIconDefault: '#ccc',
+    tabIconDefault: '#9CA3AF',
     tabIconSelected: tintColorLight,
   },
   dark: {
