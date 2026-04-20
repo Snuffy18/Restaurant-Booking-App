@@ -1,14 +1,49 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { OnboardingProgress } from '@/components/OnboardingProgress';
-import { Theme, Radius, Spacing } from '@/constants/Theme';
+import type { AppColors } from '@/constants/Theme';
+import { Radius, Spacing } from '@/constants/Theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 
 const OPTIONS = ['Italian', 'Japanese', 'French', 'Asian', 'Mediterranean', 'Everything'];
 
+function createStyles(c: AppColors) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: c.background },
+    header: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md },
+    title: { fontSize: 24, fontWeight: '800', color: c.text, marginBottom: Spacing.sm },
+    sub: { fontSize: 15, lineHeight: 22, color: c.textSecondary },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, paddingHorizontal: Spacing.lg },
+    chip: {
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 12,
+      borderRadius: Radius.full,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+    },
+    chipOn: { borderColor: c.primary, backgroundColor: c.primaryMuted },
+    chipText: { fontWeight: '600', color: c.text },
+    chipTextOn: { color: c.primary },
+    footer: { padding: Spacing.lg, gap: Spacing.sm },
+    primaryBtn: {
+      backgroundColor: c.primary,
+      paddingVertical: Spacing.md,
+      borderRadius: Radius.md,
+      alignItems: 'center',
+    },
+    primaryLabel: { color: '#fff', fontSize: 17, fontWeight: '700' },
+    skip: { alignItems: 'center', paddingVertical: Spacing.sm },
+    skipText: { color: c.textSecondary, fontWeight: '600' },
+  });
+}
+
 export default function CuisineScreen() {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [selected, setSelected] = useState<string[]>([]);
 
   const toggle = (o: string) => {
@@ -43,32 +78,3 @@ export default function CuisineScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Theme.background },
-  header: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md },
-  title: { fontSize: 24, fontWeight: '800', color: Theme.text, marginBottom: Spacing.sm },
-  sub: { fontSize: 15, lineHeight: 22, color: Theme.textSecondary },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, paddingHorizontal: Spacing.lg },
-  chip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 12,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Theme.border,
-    backgroundColor: Theme.card,
-  },
-  chipOn: { borderColor: Theme.primary, backgroundColor: Theme.primaryMuted },
-  chipText: { fontWeight: '600', color: Theme.text },
-  chipTextOn: { color: Theme.primary },
-  footer: { padding: Spacing.lg, gap: Spacing.sm },
-  primaryBtn: {
-    backgroundColor: Theme.primary,
-    paddingVertical: Spacing.md,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-  },
-  primaryLabel: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  skip: { alignItems: 'center', paddingVertical: Spacing.sm },
-  skipText: { color: Theme.textSecondary, fontWeight: '600' },
-});

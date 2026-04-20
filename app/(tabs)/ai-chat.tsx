@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -14,14 +14,129 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Theme, Radius, Spacing } from '@/constants/Theme';
+import type { AppColors } from '@/constants/Theme';
+import { Radius, Spacing } from '@/constants/Theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { RESTAURANTS } from '@/data/mockData';
 
 type Msg = { id: string; role: 'user' | 'assistant'; text: string; suggestions?: boolean };
 
 const PROMPTS = ['Something romantic for 2', 'Family dinner tonight', 'Quick lunch near me', 'Outdoor terrace, warm evening'];
 
+function createStyles(c: AppColors) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: c.background },
+    flex: { flex: 1 },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: Spacing.md,
+      paddingBottom: Spacing.sm,
+      gap: Spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: c.border,
+    },
+    avatar: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: c.aiMuted,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: c.aiBorder,
+    },
+    avatarSparkles: { width: 26, height: 26, tintColor: c.text },
+    headerTitle: { fontWeight: '800', fontSize: 17, color: c.text },
+    headerSub: { color: c.textSecondary, fontSize: 13 },
+    clearHeader: { marginLeft: 'auto', padding: Spacing.sm },
+    clearHeaderText: { color: c.ai, fontWeight: '700' },
+    promptsScroll: { flexGrow: 0, maxHeight: 52 },
+    promptsContent: {
+      gap: Spacing.sm,
+      paddingHorizontal: Spacing.md,
+      paddingBottom: Spacing.sm,
+      alignItems: 'center',
+    },
+    promptChip: {
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 10,
+      borderRadius: Radius.full,
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.border,
+      alignSelf: 'center',
+    },
+    promptChipText: { fontWeight: '600', color: c.text },
+    chatContent: { padding: Spacing.md, paddingBottom: Spacing.lg },
+    bubbleWrap: { marginBottom: Spacing.md },
+    bubbleWrapUser: { alignItems: 'flex-end' },
+    bubble: { maxWidth: '92%', padding: Spacing.md, borderRadius: Radius.lg },
+    bubbleAi: { backgroundColor: c.card, borderWidth: 1, borderColor: c.border },
+    bubbleUser: { backgroundColor: c.ai },
+    bubbleText: { color: c.text, lineHeight: 22, fontSize: 15 },
+    bubbleTextUser: { color: '#fff' },
+    suggestScroll: { flexGrow: 0 },
+    suggestRow: { marginTop: Spacing.sm, gap: Spacing.sm, alignItems: 'center', paddingRight: Spacing.md },
+    suggestCard: {
+      width: 160,
+      backgroundColor: c.card,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: c.border,
+      overflow: 'hidden',
+    },
+    suggestImg: { width: '100%', height: 88 },
+    suggestName: { fontWeight: '800', paddingHorizontal: Spacing.sm, marginTop: Spacing.sm, color: c.text },
+    suggestMeta: { paddingHorizontal: Spacing.sm, color: c.textSecondary, fontSize: 12, marginBottom: Spacing.sm },
+    suggestBadge: {
+      alignSelf: 'flex-start',
+      marginLeft: Spacing.sm,
+      marginBottom: Spacing.sm,
+      backgroundColor: c.primaryMuted,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: Radius.full,
+    },
+    suggestBadgeText: { fontSize: 11, fontWeight: '700', color: c.primary },
+    suggestBadgeMuted: {
+      alignSelf: 'flex-start',
+      marginLeft: Spacing.sm,
+      marginBottom: Spacing.sm,
+      backgroundColor: c.chipMuted,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: Radius.full,
+    },
+    suggestBadgeMutedText: { fontSize: 11, fontWeight: '700', color: c.textMuted },
+    typing: { flexDirection: 'row', gap: 6, paddingLeft: Spacing.sm, marginBottom: Spacing.md },
+    typingDot: { color: c.ai, fontSize: 18 },
+    inputBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: Spacing.md,
+      gap: Spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: c.border,
+      backgroundColor: c.card,
+    },
+    input: {
+      flex: 1,
+      backgroundColor: c.inputBg,
+      borderRadius: Radius.full,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 12,
+      fontSize: 16,
+      color: c.text,
+    },
+    send: { backgroundColor: c.ai, paddingHorizontal: Spacing.md, paddingVertical: 12, borderRadius: Radius.full },
+    sendText: { color: '#fff', fontWeight: '800' },
+  });
+}
+
 export default function AiChatScreen() {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([
@@ -67,7 +182,12 @@ export default function AiChatScreen() {
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.header}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>AI</Text>
+            <Image
+              source={require('../../assets/images/ai-sparkles.png')}
+              style={styles.avatarSparkles}
+              contentFit="contain"
+              accessibilityLabel="AI assistant"
+            />
           </View>
           <View>
             <Text style={styles.headerTitle}>Concierge</Text>
@@ -79,7 +199,11 @@ export default function AiChatScreen() {
         </View>
 
         {messages.length === 1 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.prompts}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.promptsScroll}
+            contentContainerStyle={styles.promptsContent}>
             {PROMPTS.map((p) => (
               <Pressable key={p} onPress={() => send(p)} style={styles.promptChip}>
                 <Text style={styles.promptChipText}>{p}</Text>
@@ -99,7 +223,11 @@ export default function AiChatScreen() {
                 <Text style={[styles.bubbleText, item.role === 'user' && styles.bubbleTextUser]}>{item.text}</Text>
               </View>
               {item.suggestions ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestRow}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.suggestScroll}
+                  contentContainerStyle={styles.suggestRow}>
                   {RESTAURANTS.slice(0, 3).map((r) => (
                     <Pressable key={r.id} style={styles.suggestCard} onPress={() => router.push(`/restaurant/${r.id}`)}>
                       <Image source={{ uri: r.image }} style={styles.suggestImg} contentFit="cover" />
@@ -114,8 +242,8 @@ export default function AiChatScreen() {
                           <Text style={styles.suggestBadgeText}>{r.availabilityTonight} left</Text>
                         </View>
                       ) : r.fullTonight ? (
-                        <View style={[styles.suggestBadge, { backgroundColor: '#E5E7EB' }]}>
-                          <Text style={[styles.suggestBadgeText, { color: Theme.textMuted }]}>Full tonight</Text>
+                        <View style={styles.suggestBadgeMuted}>
+                          <Text style={styles.suggestBadgeMutedText}>Full tonight</Text>
                         </View>
                       ) : null}
                     </Pressable>
@@ -140,7 +268,7 @@ export default function AiChatScreen() {
           <TextInput
             style={styles.input}
             placeholder="Ask anything…"
-            placeholderTextColor={Theme.textMuted}
+            placeholderTextColor={colors.textMuted}
             value={input}
             onChangeText={setInput}
             onSubmitEditing={() => send(input)}
@@ -153,94 +281,3 @@ export default function AiChatScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Theme.background },
-  flex: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.sm,
-    gap: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Theme.border,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Theme.aiMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#D4CFF5',
-  },
-  avatarText: { fontWeight: '900', color: Theme.ai },
-  headerTitle: { fontWeight: '800', fontSize: 17, color: Theme.text },
-  headerSub: { color: Theme.textSecondary, fontSize: 13 },
-  clearHeader: { marginLeft: 'auto', padding: Spacing.sm },
-  clearHeaderText: { color: Theme.ai, fontWeight: '700' },
-  prompts: { gap: Spacing.sm, paddingHorizontal: Spacing.md, paddingBottom: Spacing.sm },
-  promptChip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-    borderRadius: Radius.full,
-    backgroundColor: Theme.card,
-    borderWidth: 1,
-    borderColor: Theme.border,
-  },
-  promptChipText: { fontWeight: '600', color: Theme.text },
-  chatContent: { padding: Spacing.md, paddingBottom: Spacing.lg },
-  bubbleWrap: { marginBottom: Spacing.md },
-  bubbleWrapUser: { alignItems: 'flex-end' },
-  bubble: { maxWidth: '92%', padding: Spacing.md, borderRadius: Radius.lg },
-  bubbleAi: { backgroundColor: Theme.card, borderWidth: 1, borderColor: Theme.border },
-  bubbleUser: { backgroundColor: Theme.ai },
-  bubbleText: { color: Theme.text, lineHeight: 22, fontSize: 15 },
-  bubbleTextUser: { color: '#fff' },
-  suggestRow: { marginTop: Spacing.sm, gap: Spacing.sm },
-  suggestCard: {
-    width: 160,
-    backgroundColor: Theme.card,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Theme.border,
-    overflow: 'hidden',
-  },
-  suggestImg: { width: '100%', height: 88 },
-  suggestName: { fontWeight: '800', paddingHorizontal: Spacing.sm, marginTop: Spacing.sm, color: Theme.text },
-  suggestMeta: { paddingHorizontal: Spacing.sm, color: Theme.textSecondary, fontSize: 12, marginBottom: Spacing.sm },
-  suggestBadge: {
-    alignSelf: 'flex-start',
-    marginLeft: Spacing.sm,
-    marginBottom: Spacing.sm,
-    backgroundColor: Theme.primaryMuted,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: Radius.full,
-  },
-  suggestBadgeText: { fontSize: 11, fontWeight: '700', color: Theme.primary },
-  typing: { flexDirection: 'row', gap: 6, paddingLeft: Spacing.sm, marginBottom: Spacing.md },
-  typingDot: { color: Theme.ai, fontSize: 18 },
-  inputBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.md,
-    gap: Spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: Theme.border,
-    backgroundColor: Theme.card,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: Theme.background,
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: Theme.text,
-  },
-  send: { backgroundColor: Theme.ai, paddingHorizontal: Spacing.md, paddingVertical: 12, borderRadius: Radius.full },
-  sendText: { color: '#fff', fontWeight: '800' },
-});

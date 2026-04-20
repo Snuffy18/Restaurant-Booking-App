@@ -1,11 +1,37 @@
 import { Link, router } from 'expo-router';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { OnboardingProgress } from '@/components/OnboardingProgress';
-import { Theme, Radius, Spacing } from '@/constants/Theme';
+import type { AppColors } from '@/constants/Theme';
+import { Radius, Spacing } from '@/constants/Theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
+
+function createStyles(c: AppColors) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: c.background },
+    body: { flex: 1, paddingHorizontal: Spacing.lg, justifyContent: 'center' },
+    kicker: { color: c.primary, fontWeight: '700', marginBottom: Spacing.sm, letterSpacing: 0.5 },
+    title: { fontSize: 28, fontWeight: '800', color: c.text, marginBottom: Spacing.md, lineHeight: 34 },
+    sub: { fontSize: 16, lineHeight: 24, color: c.textSecondary },
+    footer: { padding: Spacing.lg, gap: Spacing.sm },
+    primaryBtn: {
+      backgroundColor: c.primary,
+      paddingVertical: Spacing.md,
+      borderRadius: Radius.md,
+      alignItems: 'center',
+    },
+    primaryLabel: { color: '#fff', fontSize: 17, fontWeight: '700' },
+    linkBtn: { paddingVertical: Spacing.sm, alignItems: 'center' },
+    linkLabel: { color: c.ai, fontWeight: '600', fontSize: 16 },
+  });
+}
 
 export default function WelcomeScreen() {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <SafeAreaView style={styles.safe}>
       <OnboardingProgress total={5} activeIndex={0} />
@@ -30,21 +56,3 @@ export default function WelcomeScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Theme.background },
-  body: { flex: 1, paddingHorizontal: Spacing.lg, justifyContent: 'center' },
-  kicker: { color: Theme.primary, fontWeight: '700', marginBottom: Spacing.sm, letterSpacing: 0.5 },
-  title: { fontSize: 28, fontWeight: '800', color: Theme.text, marginBottom: Spacing.md, lineHeight: 34 },
-  sub: { fontSize: 16, lineHeight: 24, color: Theme.textSecondary },
-  footer: { padding: Spacing.lg, gap: Spacing.sm },
-  primaryBtn: {
-    backgroundColor: Theme.primary,
-    paddingVertical: Spacing.md,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-  },
-  primaryLabel: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  linkBtn: { paddingVertical: Spacing.sm, alignItems: 'center' },
-  linkLabel: { color: Theme.ai, fontWeight: '600', fontSize: 16 },
-});

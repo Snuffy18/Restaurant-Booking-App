@@ -4,10 +4,108 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 
-import { Theme, Radius, Spacing } from '@/constants/Theme';
+import type { AppColors } from '@/constants/Theme';
+import { Radius, Spacing } from '@/constants/Theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { getRestaurant, MOCK_BOOKINGS } from '@/data/mockData';
 
+function createStyles(c: AppColors) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: c.background },
+    scroll: { padding: Spacing.md, paddingBottom: Spacing.xl },
+    header: {
+      backgroundColor: c.primary,
+      borderRadius: Radius.lg,
+      padding: Spacing.lg,
+      alignItems: 'center',
+      marginBottom: Spacing.lg,
+    },
+    check: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: Spacing.md,
+    },
+    checkMark: { color: '#fff', fontSize: 28, fontWeight: '900' },
+    headerTitle: { color: '#fff', fontSize: 24, fontWeight: '900', marginBottom: 6 },
+    headerSub: { color: 'rgba(255,255,255,0.9)', textAlign: 'center', lineHeight: 20 },
+    ticket: {
+      backgroundColor: c.card,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: c.border,
+      overflow: 'hidden',
+    },
+    ticketInner: { padding: Spacing.lg },
+    restName: { fontSize: 22, fontWeight: '900', color: c.text, textAlign: 'center' },
+    address: { marginTop: 6, color: c.textSecondary, textAlign: 'center' },
+    dashed: {
+      marginVertical: Spacing.lg,
+      borderStyle: 'dashed',
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.sm },
+    label: { color: c.textMuted, fontWeight: '600' },
+    value: { color: c.text, fontWeight: '800' },
+    requests: {
+      marginTop: Spacing.md,
+      backgroundColor: c.inputBg,
+      padding: Spacing.md,
+      borderRadius: Radius.md,
+    },
+    requestsLabel: { fontSize: 12, fontWeight: '800', color: c.textMuted, marginBottom: 6 },
+    requestsBody: { color: c.textSecondary, lineHeight: 20 },
+    perfRow: {
+      marginTop: Spacing.lg,
+      marginBottom: Spacing.md,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
+    perfDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: c.border },
+    qrWrap: { alignItems: 'center', marginBottom: Spacing.md },
+    ref: { textAlign: 'center', fontWeight: '900', color: c.text, letterSpacing: 1 },
+    purpleStrip: {
+      marginTop: Spacing.lg,
+      backgroundColor: c.aiMuted,
+      padding: Spacing.md,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: c.aiBorder,
+    },
+    purpleText: { color: c.ai, fontWeight: '600', lineHeight: 20 },
+    actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.lg },
+    actionBtn: {
+      flexGrow: 1,
+      minWidth: '30%',
+      backgroundColor: c.primary,
+      paddingVertical: 12,
+      borderRadius: Radius.md,
+      alignItems: 'center',
+    },
+    actionBtnText: { color: '#fff', fontWeight: '900' },
+    actionGhost: {
+      flexGrow: 1,
+      minWidth: '30%',
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      paddingVertical: 12,
+      borderRadius: Radius.md,
+      alignItems: 'center',
+    },
+    actionGhostText: { fontWeight: '800', color: c.text },
+    done: { marginTop: Spacing.lg, alignItems: 'center', padding: Spacing.md },
+    doneText: { color: c.ai, fontWeight: '900' },
+  });
+}
+
 export default function BookingConfirmScreen() {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const params = useLocalSearchParams<{
     ref?: string;
     restaurantId?: string;
@@ -78,7 +176,7 @@ export default function BookingConfirmScreen() {
               ))}
             </View>
             <View style={styles.qrWrap}>
-              <QRCode value={qrPayload} size={180} color={Theme.text} backgroundColor={Theme.card} />
+              <QRCode value={qrPayload} size={180} color={colors.text} backgroundColor={colors.card} />
             </View>
             <Text style={styles.ref}>{ref}</Text>
           </View>
@@ -107,95 +205,3 @@ export default function BookingConfirmScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Theme.background },
-  scroll: { padding: Spacing.md, paddingBottom: Spacing.xl },
-  header: {
-    backgroundColor: Theme.primary,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    alignItems: 'center',
-    marginBottom: Spacing.lg,
-  },
-  check: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.md,
-  },
-  checkMark: { color: '#fff', fontSize: 28, fontWeight: '900' },
-  headerTitle: { color: '#fff', fontSize: 24, fontWeight: '900', marginBottom: 6 },
-  headerSub: { color: 'rgba(255,255,255,0.9)', textAlign: 'center', lineHeight: 20 },
-  ticket: {
-    backgroundColor: Theme.card,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Theme.border,
-    overflow: 'hidden',
-  },
-  ticketInner: { padding: Spacing.lg },
-  restName: { fontSize: 22, fontWeight: '900', color: Theme.text, textAlign: 'center' },
-  address: { marginTop: 6, color: Theme.textSecondary, textAlign: 'center' },
-  dashed: {
-    marginVertical: Spacing.lg,
-    borderStyle: 'dashed',
-    borderWidth: 1,
-    borderColor: Theme.border,
-  },
-  row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.sm },
-  label: { color: Theme.textMuted, fontWeight: '600' },
-  value: { color: Theme.text, fontWeight: '800' },
-  requests: {
-    marginTop: Spacing.md,
-    backgroundColor: Theme.background,
-    padding: Spacing.md,
-    borderRadius: Radius.md,
-  },
-  requestsLabel: { fontSize: 12, fontWeight: '800', color: Theme.textMuted, marginBottom: 6 },
-  requestsBody: { color: Theme.textSecondary, lineHeight: 20 },
-  perfRow: {
-    marginTop: Spacing.lg,
-    marginBottom: Spacing.md,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  perfDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Theme.border },
-  qrWrap: { alignItems: 'center', marginBottom: Spacing.md },
-  ref: { textAlign: 'center', fontWeight: '900', color: Theme.text, letterSpacing: 1 },
-  purpleStrip: {
-    marginTop: Spacing.lg,
-    backgroundColor: Theme.aiMuted,
-    padding: Spacing.md,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: '#D4CFF5',
-  },
-  purpleText: { color: Theme.ai, fontWeight: '600', lineHeight: 20 },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.lg },
-  actionBtn: {
-    flexGrow: 1,
-    minWidth: '30%',
-    backgroundColor: Theme.primary,
-    paddingVertical: 12,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-  },
-  actionBtnText: { color: '#fff', fontWeight: '900' },
-  actionGhost: {
-    flexGrow: 1,
-    minWidth: '30%',
-    borderWidth: 1,
-    borderColor: Theme.border,
-    backgroundColor: Theme.card,
-    paddingVertical: 12,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-  },
-  actionGhostText: { fontWeight: '800', color: Theme.text },
-  done: { marginTop: Spacing.lg, alignItems: 'center', padding: Spacing.md },
-  doneText: { color: Theme.ai, fontWeight: '900' },
-});

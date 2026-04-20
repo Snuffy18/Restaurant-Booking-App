@@ -1,28 +1,41 @@
 import React from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { Image } from 'expo-image';
 import { Tabs } from 'expo-router';
+import { StyleSheet } from 'react-native';
 
-import Colors from '@/constants/Colors';
-import { Theme } from '@/constants/Theme';
-import { useColorScheme } from '@/components/useColorScheme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+
+const AI_SPARKLES = require('../../assets/images/ai-sparkles.png');
 
 function TabBarIcon(props: { name: React.ComponentProps<typeof FontAwesome>['name']; color: string }) {
   return <FontAwesome size={22} style={{ marginBottom: -2 }} {...props} />;
 }
 
+function AiTabBarIcon({ color }: { color: string }) {
+  return (
+    <Image
+      source={AI_SPARKLES}
+      style={[styles.aiTabIcon, { tintColor: color }]}
+      contentFit="contain"
+      accessibilityLabel="AI chat"
+    />
+  );
+}
+
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { colors } = useAppTheme();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Theme.primary,
-        tabBarInactiveTintColor: Colors[colorScheme ?? 'light'].tabIconDefault,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         headerShown: useClientOnlyValue(false, false),
         tabBarStyle: {
-          backgroundColor: Theme.card,
-          borderTopColor: Theme.border,
+          backgroundColor: colors.card,
+          borderTopColor: colors.border,
         },
       }}>
       <Tabs.Screen
@@ -43,7 +56,7 @@ export default function TabLayout() {
         name="ai-chat"
         options={{
           title: 'AI chat',
-          tabBarIcon: ({ color }) => <TabBarIcon name="comment" color={color} />,
+          tabBarIcon: ({ color }) => <AiTabBarIcon color={color} />,
         }}
       />
       <Tabs.Screen
@@ -63,3 +76,11 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  aiTabIcon: {
+    width: 24,
+    height: 24,
+    marginBottom: -2,
+  },
+});

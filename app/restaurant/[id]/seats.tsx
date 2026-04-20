@@ -4,10 +4,107 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SeatPreviewIcon } from '@/components/SeatPreviewIcon';
-import { Theme, Radius, Spacing } from '@/constants/Theme';
+import type { AppColors } from '@/constants/Theme';
+import { Radius, Spacing } from '@/constants/Theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { getRestaurant, tablesForRestaurant } from '@/data/mockData';
 
+function createStyles(c: AppColors) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: c.background },
+    miss: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: c.background },
+    topBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: Spacing.md,
+      paddingBottom: Spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: c.border,
+      backgroundColor: c.background,
+    },
+    back: { color: c.primary, fontWeight: '800', fontSize: 16 },
+    title: { fontWeight: '900', fontSize: 17, color: c.text, flex: 1, textAlign: 'center' },
+    aiChip: {
+      alignSelf: 'flex-start',
+      marginHorizontal: Spacing.md,
+      marginTop: Spacing.md,
+      backgroundColor: c.aiMuted,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: Radius.full,
+      borderWidth: 1,
+      borderColor: c.aiBorder,
+    },
+    aiChipText: { color: c.ai, fontWeight: '900', fontSize: 12 },
+    featured: {
+      margin: Spacing.md,
+      padding: Spacing.md,
+      borderRadius: Radius.lg,
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.aiBorder,
+    },
+    featuredHead: { flexDirection: 'row', gap: Spacing.md, alignItems: 'center' },
+    featuredName: { fontSize: 20, fontWeight: '900', color: c.text },
+    featuredMeta: { marginTop: 4, color: c.textSecondary, fontWeight: '600' },
+    whyBox: {
+      marginTop: Spacing.md,
+      backgroundColor: c.inputBg,
+      borderRadius: Radius.md,
+      padding: Spacing.md,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    whyTitle: { fontWeight: '900', color: c.ai, marginBottom: 6 },
+    whyBody: { color: c.textSecondary, lineHeight: 20 },
+    selectRow: {
+      marginTop: Spacing.md,
+      backgroundColor: c.ai,
+      paddingVertical: 12,
+      borderRadius: Radius.md,
+      alignItems: 'center',
+    },
+    selectRowOn: { backgroundColor: c.primary },
+    selectText: { color: '#fff', fontWeight: '900' },
+    disabled: { opacity: 0.5 },
+    sectionLabel: { marginHorizontal: Spacing.md, marginBottom: Spacing.sm, fontWeight: '900', color: c.text },
+    tableCard: {
+      marginHorizontal: Spacing.md,
+      marginBottom: Spacing.sm,
+      padding: Spacing.md,
+      borderRadius: Radius.lg,
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    tableCardMuted: { opacity: 0.55 },
+    tableCardOn: { borderColor: c.primary, backgroundColor: c.primaryMuted },
+    tableRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+    tableName: { fontWeight: '900', color: c.text, fontSize: 16 },
+    tableMeta: { marginTop: 4, color: c.textSecondary, fontSize: 13 },
+    takenBadge: { backgroundColor: c.chipMuted, paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.full },
+    takenBadgeText: { fontWeight: '900', fontSize: 11, color: c.textMuted },
+    selectedText: { fontWeight: '900', color: c.primary },
+    sticky: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: c.card,
+      borderTopWidth: 1,
+      borderTopColor: c.border,
+      paddingHorizontal: Spacing.md,
+      paddingTop: Spacing.md,
+    },
+    cta: { backgroundColor: c.primary, paddingVertical: 16, borderRadius: Radius.md, alignItems: 'center' },
+    ctaText: { color: '#fff', fontWeight: '900', fontSize: 16 },
+  });
+}
+
 export default function SeatsScreen() {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const restaurant = useMemo(() => (id ? getRestaurant(String(id)) : undefined), [id]);
   const tables = useMemo(() => (id ? tablesForRestaurant(String(id)) : []), [id]);
@@ -28,7 +125,7 @@ export default function SeatsScreen() {
   if (!restaurant) {
     return (
       <SafeAreaView style={styles.miss}>
-        <Text>Not found</Text>
+        <Text style={{ color: colors.text }}>Not found</Text>
       </SafeAreaView>
     );
   }
@@ -125,94 +222,3 @@ export default function SeatsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Theme.background },
-  miss: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Theme.border,
-    backgroundColor: Theme.background,
-  },
-  back: { color: Theme.primary, fontWeight: '800', fontSize: 16 },
-  title: { fontWeight: '900', fontSize: 17, color: Theme.text, flex: 1, textAlign: 'center' },
-  aiChip: {
-    alignSelf: 'flex-start',
-    marginHorizontal: Spacing.md,
-    marginTop: Spacing.md,
-    backgroundColor: Theme.aiMuted,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: '#D4CFF5',
-  },
-  aiChipText: { color: Theme.ai, fontWeight: '900', fontSize: 12 },
-  featured: {
-    margin: Spacing.md,
-    padding: Spacing.md,
-    borderRadius: Radius.lg,
-    backgroundColor: Theme.card,
-    borderWidth: 1,
-    borderColor: '#D4CFF5',
-  },
-  featuredHead: { flexDirection: 'row', gap: Spacing.md, alignItems: 'center' },
-  featuredName: { fontSize: 20, fontWeight: '900', color: Theme.text },
-  featuredMeta: { marginTop: 4, color: Theme.textSecondary, fontWeight: '600' },
-  whyBox: {
-    marginTop: Spacing.md,
-    backgroundColor: Theme.background,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: Theme.border,
-  },
-  whyTitle: { fontWeight: '900', color: Theme.ai, marginBottom: 6 },
-  whyBody: { color: Theme.textSecondary, lineHeight: 20 },
-  selectRow: {
-    marginTop: Spacing.md,
-    backgroundColor: Theme.ai,
-    paddingVertical: 12,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-  },
-  selectRowOn: { backgroundColor: Theme.primary },
-  selectText: { color: '#fff', fontWeight: '900' },
-  disabled: { opacity: 0.5 },
-  sectionLabel: { marginHorizontal: Spacing.md, marginBottom: Spacing.sm, fontWeight: '900', color: Theme.text },
-  tableCard: {
-    marginHorizontal: Spacing.md,
-    marginBottom: Spacing.sm,
-    padding: Spacing.md,
-    borderRadius: Radius.lg,
-    backgroundColor: Theme.card,
-    borderWidth: 1,
-    borderColor: Theme.border,
-  },
-  tableCardMuted: { opacity: 0.55 },
-  tableCardOn: { borderColor: Theme.primary, backgroundColor: Theme.primaryMuted },
-  tableRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  tableName: { fontWeight: '900', color: Theme.text, fontSize: 16 },
-  tableMeta: { marginTop: 4, color: Theme.textSecondary, fontSize: 13 },
-  takenBadge: { backgroundColor: '#E5E7EB', paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.full },
-  takenBadgeText: { fontWeight: '900', fontSize: 11, color: Theme.textMuted },
-  selectedText: { fontWeight: '900', color: Theme.primary },
-  sticky: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: Theme.card,
-    borderTopWidth: 1,
-    borderTopColor: Theme.border,
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.md,
-  },
-  cta: { backgroundColor: Theme.primary, paddingVertical: 16, borderRadius: Radius.md, alignItems: 'center' },
-  ctaText: { color: '#fff', fontWeight: '900', fontSize: 16 },
-});

@@ -1,21 +1,19 @@
-import { Theme } from './Theme';
+import { darkColors, lightColors } from './Theme';
 
-const tintColorLight = Theme.primary;
-const tintColorDark = Theme.primary;
-
+/** Legacy shape for `Themed` / older components — maps to app palettes */
 export default {
   light: {
-    text: Theme.text,
-    background: Theme.background,
-    tint: tintColorLight,
-    tabIconDefault: '#9CA3AF',
-    tabIconSelected: tintColorLight,
+    text: lightColors.text,
+    background: lightColors.background,
+    tint: lightColors.primary,
+    tabIconDefault: lightColors.textMuted,
+    tabIconSelected: lightColors.primary,
   },
   dark: {
-    text: '#fff',
-    background: '#000',
-    tint: tintColorDark,
-    tabIconDefault: '#ccc',
-    tabIconSelected: tintColorDark,
+    text: darkColors.text,
+    background: darkColors.background,
+    tint: darkColors.primary,
+    tabIconDefault: darkColors.textMuted,
+    tabIconSelected: darkColors.primary,
   },
 };

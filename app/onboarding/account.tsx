@@ -1,12 +1,55 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { OnboardingProgress } from '@/components/OnboardingProgress';
-import { Theme, Radius, Spacing } from '@/constants/Theme';
+import type { AppColors } from '@/constants/Theme';
+import { Radius, Spacing } from '@/constants/Theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
+
+function createStyles(c: AppColors) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: c.background },
+    header: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md },
+    title: { fontSize: 24, fontWeight: '800', color: c.text, marginBottom: Spacing.sm },
+    sub: { fontSize: 15, lineHeight: 22, color: c.textSecondary },
+    form: { paddingHorizontal: Spacing.lg, gap: Spacing.sm, flex: 1 },
+    label: { fontSize: 13, fontWeight: '600', color: c.textSecondary, marginTop: Spacing.xs },
+    input: {
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.border,
+      borderRadius: Radius.md,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 14,
+      fontSize: 16,
+      color: c.text,
+    },
+    google: {
+      marginTop: Spacing.md,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      paddingVertical: 14,
+      borderRadius: Radius.md,
+      alignItems: 'center',
+    },
+    googleLabel: { fontWeight: '600', color: c.text },
+    footer: { padding: Spacing.lg },
+    primaryBtn: {
+      backgroundColor: c.primary,
+      paddingVertical: Spacing.md,
+      borderRadius: Radius.md,
+      alignItems: 'center',
+    },
+    primaryLabel: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  });
+}
 
 export default function AccountScreen() {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -22,7 +65,7 @@ export default function AccountScreen() {
         <TextInput
           style={styles.input}
           placeholder="you@example.com"
-          placeholderTextColor={Theme.textMuted}
+          placeholderTextColor={colors.textMuted}
           autoCapitalize="none"
           keyboardType="email-address"
           value={email}
@@ -32,7 +75,7 @@ export default function AccountScreen() {
         <TextInput
           style={styles.input}
           placeholder="••••••••"
-          placeholderTextColor={Theme.textMuted}
+          placeholderTextColor={colors.textMuted}
           secureTextEntry
           value={password}
           onChangeText={setPassword}
@@ -49,40 +92,3 @@ export default function AccountScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Theme.background },
-  header: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md },
-  title: { fontSize: 24, fontWeight: '800', color: Theme.text, marginBottom: Spacing.sm },
-  sub: { fontSize: 15, lineHeight: 22, color: Theme.textSecondary },
-  form: { paddingHorizontal: Spacing.lg, gap: Spacing.sm, flex: 1 },
-  label: { fontSize: 13, fontWeight: '600', color: Theme.textSecondary, marginTop: Spacing.xs },
-  input: {
-    backgroundColor: Theme.card,
-    borderWidth: 1,
-    borderColor: Theme.border,
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: Theme.text,
-  },
-  google: {
-    marginTop: Spacing.md,
-    borderWidth: 1,
-    borderColor: Theme.border,
-    backgroundColor: Theme.card,
-    paddingVertical: 14,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-  },
-  googleLabel: { fontWeight: '600', color: Theme.text },
-  footer: { padding: Spacing.lg },
-  primaryBtn: {
-    backgroundColor: Theme.primary,
-    paddingVertical: Spacing.md,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-  },
-  primaryLabel: { color: '#fff', fontSize: 17, fontWeight: '700' },
-});
