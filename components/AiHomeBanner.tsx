@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
+  interpolate,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -94,16 +95,62 @@ export function AiHomeBanner() {
   const { accentHex, resolvedScheme } = useAppTheme();
   const p = ACCENT_PRIMARY_BY_HEX[accentHex];
   const darkNear = '#0c0c0c';
+  const bannerW = useSharedValue(0);
+  const bannerH = useSharedValue(0);
+  const glowOrbit = useSharedValue(0);
   const lightStops = [
     mixHex(p.primary, darkNear, 0.42),
     mixHex(p.primary, darkNear, 0.16),
     p.primary,
   ] as const;
 
+  useEffect(() => {
+    glowOrbit.value = withRepeat(
+      withTiming(1, { duration: 4200, easing: Easing.linear }),
+      -1,
+      false,
+    );
+  }, [glowOrbit]);
+
+  const glowOrbStyle = useAnimatedStyle(() => {
+    const w = bannerW.value;
+    const h = bannerH.value;
+    if (w <= 0 || h <= 0) return { opacity: 0 };
+
+    const perimeter = 2 * (w + h);
+    const dist = glowOrbit.value * perimeter;
+    let x = 0;
+    let y = 0;
+
+    if (dist <= w) {
+      x = dist;
+      y = 0;
+    } else if (dist <= w + h) {
+      x = w;
+      y = dist - w;
+    } else if (dist <= 2 * w + h) {
+      x = w - (dist - (w + h));
+      y = h;
+    } else {
+      x = 0;
+      y = h - (dist - (2 * w + h));
+    }
+
+    return {
+      opacity: interpolate(glowOrbit.value, [0, 0.08, 0.92, 1], [0.6, 1, 1, 0.6]),
+      transform: [{ translateX: x - 8 }, { translateY: y - 8 }],
+    };
+  });
+
   return (
-    <Link href="/ai-chat" asChild>
+    <Link href="/(tabs)/ai" asChild>
       <Pressable style={({ pressed }) => [styles.outer, pressed && styles.outerPressed]}>
-        <View style={styles.clip}>
+        <View
+          style={styles.clip}
+          onLayout={(e) => {
+            bannerW.value = e.nativeEvent.layout.width;
+            bannerH.value = e.nativeEvent.layout.height;
+          }}>
           <LinearGradient
             {...(resolvedScheme === 'light'
               ? {
@@ -117,6 +164,9 @@ export function AiHomeBanner() {
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
+          <Animated.View pointerEvents="none" style={[styles.glowOrb, glowOrbStyle]}>
+            <View style={styles.glowOrbCore} />
+          </Animated.View>
           <View style={styles.particleLayer} pointerEvents="none">
             {PARTICLE_LAYOUT.map((cfg, i) => (
               <FloatingParticle key={i} {...cfg} />
@@ -157,9 +207,29 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
   },
+  glowOrb: {
+    position: 'absolute',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    zIndex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  glowOrbCore: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#FFFFFF',
+    shadowOpacity: 0.95,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 7,
+  },
   particleLayer: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 0,
+    zIndex: 1,
   },
   particle: {
     position: 'absolute',
@@ -167,7 +237,7 @@ const styles = StyleSheet.create({
   },
   content: {
     position: 'relative',
-    zIndex: 1,
+    zIndex: 3,
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.md,
   },

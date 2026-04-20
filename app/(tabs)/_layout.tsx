@@ -61,7 +61,7 @@ export default function TabLayout() {
         listeners={{
           tabPress: (e) => {
             e.preventDefault();
-            router.push('/ai-chat');
+            router.push('/(tabs)/ai');
           },
         }}
       />

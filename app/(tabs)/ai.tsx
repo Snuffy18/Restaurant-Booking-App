@@ -1,7 +1,7 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ShimmerText } from '@/components/ShimmerText';
 import type { AppColors } from '@/constants/Theme';
 import { Radius, Spacing } from '@/constants/Theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
@@ -44,8 +45,8 @@ function toneForAvailabilityLeft(n: number): AvailabilityTone {
 
 function createStyles(c: AppColors) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: c.background },
-    flex: { flex: 1 },
+    safe: { flex: 1, backgroundColor: c.card },
+    flex: { flex: 1, backgroundColor: c.background },
 
     // Header
     header: {
@@ -58,17 +59,22 @@ function createStyles(c: AppColors) {
       borderBottomColor: c.border,
       backgroundColor: c.card,
     },
+    backBtn: {
+      paddingVertical: Spacing.sm,
+      paddingRight: Spacing.xs,
+      marginLeft: -Spacing.xs,
+    },
     avatarWrap: {
       width: 48,
       height: 48,
       borderRadius: 24,
-      backgroundColor: c.aiMuted,
+      backgroundColor: c.primary,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 2,
-      borderColor: c.aiBorder,
+      borderColor: c.primary,
     },
-    avatarImg: { width: 26, height: 26, tintColor: c.ai },
+    avatarImg: { width: 26, height: 26, tintColor: '#fff' },
     headerInfo: { flex: 1 },
     headerTitle: { fontWeight: '800', fontSize: 17, color: c.text },
     headerStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
@@ -85,7 +91,7 @@ function createStyles(c: AppColors) {
     clearBtnText: { color: c.textSecondary, fontWeight: '600', fontSize: 13 },
 
     // Chat list
-    chatContent: { padding: Spacing.md, paddingBottom: Spacing.lg },
+    chatContent: { flexGrow: 1, justifyContent: 'flex-end', padding: Spacing.md, paddingBottom: Spacing.lg },
 
     // Bubbles
     bubbleWrap: { marginBottom: 12 },
@@ -95,14 +101,14 @@ function createStyles(c: AppColors) {
       width: 28,
       height: 28,
       borderRadius: 14,
-      backgroundColor: c.aiMuted,
+      backgroundColor: c.primary,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
-      borderColor: c.aiBorder,
+      borderColor: c.primary,
       marginBottom: 2,
     },
-    aiAvatarImg: { width: 15, height: 15, tintColor: c.ai },
+    aiAvatarImg: { width: 20, height: 20, tintColor: '#fff' },
     bubble: { maxWidth: '78%', paddingHorizontal: Spacing.md, paddingVertical: 12, borderRadius: Radius.lg },
     bubbleAi: {
       backgroundColor: c.card,
@@ -117,7 +123,7 @@ function createStyles(c: AppColors) {
     bubbleText: { color: c.text, lineHeight: 22, fontSize: 15 },
     bubbleTextUser: { color: '#fff' },
 
-    // Prompt chips grid (shown after first greeting)
+    // Prompt chips grid
     promptsSection: { paddingTop: Spacing.md, gap: Spacing.sm },
     promptsRow: { flexDirection: 'row', gap: Spacing.sm },
     promptChip: {
@@ -136,7 +142,7 @@ function createStyles(c: AppColors) {
     suggestScroll: { flexGrow: 0 },
     suggestRow: {
       marginTop: Spacing.sm,
-      paddingLeft: 28 + Spacing.sm, // align with bubble start (aiAvatar width + gap)
+      paddingLeft: 28 + Spacing.sm,
       paddingRight: Spacing.md,
       gap: Spacing.sm,
       alignItems: 'center',
@@ -181,18 +187,8 @@ function createStyles(c: AppColors) {
     // Typing indicator
     typingRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm, marginBottom: 12 },
     typingBubble: {
-      backgroundColor: c.card,
-      borderWidth: 1,
-      borderColor: c.border,
-      borderRadius: Radius.lg,
       borderBottomLeftRadius: 4,
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      flexDirection: 'row',
-      gap: 5,
-      alignItems: 'center',
     },
-    typingDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: c.ai },
 
     // Input bar
     inputBar: {
@@ -232,6 +228,14 @@ function createStyles(c: AppColors) {
   });
 }
 
+function leaveChat() {
+  if (router.canGoBack()) {
+    router.back();
+  } else {
+    router.replace('/(tabs)');
+  }
+}
+
 export default function AiChatScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -245,24 +249,37 @@ export default function AiChatScreen() {
     },
   ]);
   const listRef = useRef<FlatList>(null);
+  const responseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (responseTimerRef.current) clearTimeout(responseTimerRef.current);
+    };
+  }, []);
 
   const pushAssistant = useCallback((text: string, withSuggestions?: boolean) => {
     setMessages((m) => [...m, { id: String(Date.now()), role: 'assistant', text, suggestions: withSuggestions }]);
   }, []);
 
-  const send = (text: string) => {
+  const send = (text: string, opts?: { fromPrompt?: boolean }) => {
     const trimmed = text.trim();
     if (!trimmed) return;
+    if (responseTimerRef.current) {
+      clearTimeout(responseTimerRef.current);
+      responseTimerRef.current = null;
+    }
     setMessages((m) => [...m, { id: String(Date.now()) + 'u', role: 'user', text: trimmed }]);
     setInput('');
     setTyping(true);
-    setTimeout(() => {
+    const responseDelayMs = opts?.fromPrompt ? 1900 : 1000;
+    responseTimerRef.current = setTimeout(() => {
       setTyping(false);
       pushAssistant(
         'Here are a few spots that match — availability updates live. Tap a card to view the restaurant.',
         true,
       );
-    }, 900);
+      responseTimerRef.current = null;
+    }, responseDelayMs);
   };
 
   const reset = () => {
@@ -388,26 +405,24 @@ export default function AiChatScreen() {
                   />
                 </View>
                 <View style={styles.typingBubble}>
-                  <View style={styles.typingDot} />
-                  <View style={[styles.typingDot, { opacity: 0.6 }]} />
-                  <View style={[styles.typingDot, { opacity: 0.3 }]} />
+                  <ShimmerText text="Thinking" baseColor="#6B7280" shimmerColor="orange" duration={1100} bounceHeight={7} bounceDuration={900} fontSize={16}/>
                 </View>
               </View>
             ) : isFirstMessage ? (
               <View style={styles.promptsSection}>
                 <View style={styles.promptsRow}>
-                  <Pressable style={styles.promptChip} onPress={() => send(PROMPTS[0])}>
+                  <Pressable style={styles.promptChip} onPress={() => send(PROMPTS[0], { fromPrompt: true })}>
                     <Text style={styles.promptChipText}>{PROMPTS[0]}</Text>
                   </Pressable>
-                  <Pressable style={styles.promptChip} onPress={() => send(PROMPTS[1])}>
+                  <Pressable style={styles.promptChip} onPress={() => send(PROMPTS[1], { fromPrompt: true })}>
                     <Text style={styles.promptChipText}>{PROMPTS[1]}</Text>
                   </Pressable>
                 </View>
                 <View style={styles.promptsRow}>
-                  <Pressable style={styles.promptChip} onPress={() => send(PROMPTS[2])}>
+                  <Pressable style={styles.promptChip} onPress={() => send(PROMPTS[2], { fromPrompt: true })}>
                     <Text style={styles.promptChipText}>{PROMPTS[2]}</Text>
                   </Pressable>
-                  <Pressable style={styles.promptChip} onPress={() => send(PROMPTS[3])}>
+                  <Pressable style={styles.promptChip} onPress={() => send(PROMPTS[3], { fromPrompt: true })}>
                     <Text style={styles.promptChipText}>{PROMPTS[3]}</Text>
                   </Pressable>
                 </View>

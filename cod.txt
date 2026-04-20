@@ -6,7 +6,7 @@ import { Picker } from '@react-native-picker/picker';
 import LottieView from 'lottie-react-native';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated as RNAnimated, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, interpolate, LinearTransition, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -245,9 +245,7 @@ function createStyles(c: AppColors) {
       zIndex: 30,
     },
     pinchHintCard: {
-      backgroundColor: c.card,
-      borderWidth: 1,
-      borderColor: c.border,
+      backgroundColor: "rgba(0,0,0,0.85)",
       borderRadius: Radius.lg,
       paddingHorizontal: Spacing.lg,
       paddingVertical: Spacing.md,
@@ -257,8 +255,8 @@ function createStyles(c: AppColors) {
       maxWidth: 340,
     },
     pinchHintLottie: { width: 256, height: 256 },
-    pinchHintTitle: { color: c.text, fontWeight: '800', fontSize: 16, textAlign: 'center' },
-    pinchHintSub: { color: c.textSecondary, fontSize: 13, textAlign: 'center' },
+    pinchHintTitle: { color: "#fff", fontWeight: '800', fontSize: 16, textAlign: 'center' },
+    pinchHintSub: { color: "#fff", fontSize: 13, textAlign: 'center' },
     pinchHintSkeletonWrap: {
       width: Math.max(230, 340 - Spacing.lg * 2),
       borderRadius: Radius.md,
@@ -288,7 +286,6 @@ export default function AllRestaurantsScreen() {
   const [query, setQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<FilterId[]>([]);
   const [reservationModalOpen, setReservationModalOpen] = useState(false);
-  const [reservationModalMounted, setReservationModalMounted] = useState(false);
   const [reservationDate, setReservationDate] = useState('Today');
   const [reservationTime, setReservationTime] = useState(timeOptions[0] ?? 'Now');
   const [reservationGuests, setReservationGuests] = useState<(typeof GUEST_OPTIONS)[number]>(2);
@@ -300,8 +297,6 @@ export default function AllRestaurantsScreen() {
   const morphProgress = useSharedValue(0);
   const pinchHintOpacity = useSharedValue(0);
   const pinchHintMorph = useSharedValue(0);
-  const modalBackdropOpacity = useRef(new RNAnimated.Value(0)).current;
-  const modalSheetTranslateY = useRef(new RNAnimated.Value(520)).current;
   const pinchStartDistanceRef = useRef<number | null>(null);
   const pinchHandledRef = useRef(false);
 
@@ -372,32 +367,6 @@ export default function AllRestaurantsScreen() {
       false,
     );
   }, [showPinchHint, pinchHintOpacity, pinchHintMorph]);
-
-  useEffect(() => {
-    if (reservationModalOpen) {
-      setReservationModalMounted(true);
-      requestAnimationFrame(() => {
-        RNAnimated.parallel([
-          RNAnimated.timing(modalBackdropOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
-          RNAnimated.spring(modalSheetTranslateY, {
-            toValue: 0,
-            damping: 22,
-            stiffness: 230,
-            mass: 0.9,
-            useNativeDriver: true,
-          }),
-        ]).start();
-      });
-      return;
-    }
-    if (!reservationModalMounted) return;
-    RNAnimated.parallel([
-      RNAnimated.timing(modalBackdropOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
-      RNAnimated.timing(modalSheetTranslateY, { toValue: 520, duration: 220, useNativeDriver: true }),
-    ]).start(({ finished }) => {
-      if (finished) setReservationModalMounted(false);
-    });
-  }, [reservationModalOpen, reservationModalMounted, modalBackdropOpacity, modalSheetTranslateY]);
 
   const compactImageSize = 104;
   const detailedImageHeight = 190;
@@ -608,11 +577,9 @@ export default function AllRestaurantsScreen() {
           </Animated.View>
         ))}
       </ScrollView>
-      <Modal visible={reservationModalMounted} transparent animationType="none" onRequestClose={() => setReservationModalOpen(false)}>
+      <Modal visible={reservationModalOpen} transparent animationType="slide" onRequestClose={() => setReservationModalOpen(false)}>
         <Pressable style={styles.pickerOverlay} onPress={() => setReservationModalOpen(false)}>
-          <RNAnimated.View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.35)', opacity: modalBackdropOpacity }]} />
-          <RNAnimated.View style={{ transform: [{ translateY: modalSheetTranslateY }] }}>
-            <Pressable style={[styles.pickerCard, { paddingBottom: insets.bottom + Spacing.lg }]} onPress={() => {}}>
+          <Pressable style={[styles.pickerCard, { paddingBottom: insets.bottom + Spacing.lg }]} onPress={() => {}}>
             <Text style={styles.pickerTitle}>Date and Time</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.guestsScroller} contentContainerStyle={styles.guestsScrollerContent}>
               {GUEST_OPTIONS.map((g) => (
@@ -683,8 +650,7 @@ export default function AllRestaurantsScreen() {
                 <Text style={styles.pickerBtnPrimaryText}>Apply</Text>
               </Pressable>
             </View>
-            </Pressable>
-          </RNAnimated.View>
+          </Pressable>
         </Pressable>
       </Modal>
       {showPinchHint ? (

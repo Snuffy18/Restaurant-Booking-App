@@ -1,18 +1,20 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated as RNAnimated, Modal, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { AppColors } from '@/constants/Theme';
 import { Radius, Spacing } from '@/constants/Theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
 import { MOCK_USER, RESTAURANTS, Restaurant } from '@/data/mockData';
 import { AiHomeBanner } from '@/components/AiHomeBanner';
+import { BitesIcon } from '@/components/BitesIcon';
 import { TabScreenFade } from '@/components/TabScreenFade';
 import { requestExploreSearchFocus } from '@/lib/exploreSearchFocus';
 
 const FILTER_CHIPS = ['All', 'Italian', 'Japanese', 'Romantic', 'Family', 'Outdoor'];
+const CURRENT_BITES = 340;
 
 /** “Tables left” pills — semantic green/red only, not app accent */
 const AVAIL_PILL = {
@@ -180,6 +182,130 @@ function createStyles(c: AppColors) {
     softBadgeTextGreen: { fontSize: 11, fontWeight: '700', color: AVAIL_PILL.green.text },
     softBadgeTextOrange: { fontSize: 11, fontWeight: '700', color: AVAIL_PILL.orange.text },
     softBadgeTextRed: { fontSize: 11, fontWeight: '700', color: AVAIL_PILL.red.text },
+    bitesSection: { marginHorizontal: Spacing.md, marginTop: Spacing.md },
+    bitesCard: {
+      backgroundColor: c.card,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: c.border,
+      padding: Spacing.md,
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: Spacing.md,
+    },
+    bitesInfo: { flex: 1 },
+    bitesLabel: { color: '#4e0110', fontSize: 13, fontWeight: '700' },
+    bitesAmount: { color: '#4e0110', fontSize: 26, fontWeight: '900', marginTop: 6 },
+    bitesModalOverlay: {
+      flex: 1,
+      justifyContent: 'flex-end',
+      backgroundColor: 'rgba(0,0,0,0.35)',
+    },
+    bitesModalCard: {
+      backgroundColor: '#FFFFFF',
+      borderTopLeftRadius: Radius.lg,
+      borderTopRightRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: c.border,
+      height: '90%',
+      overflow: 'hidden',
+    },
+    bitesDragHandleWrap: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingTop: Spacing.sm,
+      paddingBottom: Spacing.xs,
+      backgroundColor: '#FFFFFF',
+    },
+    bitesDragHandle: {
+      width: 44,
+      height: 5,
+      borderRadius: Radius.full,
+      backgroundColor: '#D1D5DB',
+    },
+    bitesModalHeader: {
+      paddingHorizontal: Spacing.lg,
+      paddingTop: Spacing.md,
+      paddingBottom: Spacing.sm,
+      backgroundColor: '#FFFFFF',
+      borderBottomWidth: 1,
+      borderBottomColor: '#E5E7EB',
+    },
+    bitesModalHeaderTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    bitesModalTitle: { color: '#111827', fontSize: 24, fontWeight: '900' },
+    bitesRewardsBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    bitesRewardsText: { color: '#111827', fontSize: 14, fontWeight: '700' },
+    bitesTabs: { flexDirection: 'row', marginTop: Spacing.sm },
+    bitesTab: { flex: 1, alignItems: 'center', paddingVertical: 8 },
+    bitesTabText: { color: '#6B7280', fontSize: 15, fontWeight: '600' },
+    bitesTabActiveText: { color: '#F4A62A', fontWeight: '800' },
+    bitesTabActiveUnderline: { marginTop: 8, height: 2, width: '82%', backgroundColor: '#F4A62A', borderRadius: 1 },
+    bitesModalScroll: { flex: 1, backgroundColor: '#FFFFFF' },
+    bitesSummaryBlock: { backgroundColor: '#E9DDC9', alignItems: 'center', padding: Spacing.md },
+    bitesSummaryAmountRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+    bitesSummaryAmount: { color: '#2A2218', fontSize: 42, fontWeight: '900' },
+    bitesSummaryLabel: { color: '#4B3A29', fontSize: 15, marginTop: 4, fontWeight: '600' },
+    bitesProgressCard: {
+      marginTop: Spacing.md,
+      width: '100%',
+      backgroundColor: '#F2C574',
+      borderRadius: Radius.md,
+      padding: Spacing.sm,
+      gap: Spacing.sm,
+    },
+    bitesProgressTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    bitesProgressLabel: { color: '#4A3416', fontSize: 13, fontWeight: '700' },
+    bitesProgressStat: { color: '#4A3416', fontSize: 13, fontWeight: '800' },
+    bitesProgressTrack: { height: 8, backgroundColor: '#E9B558', borderRadius: 99, overflow: 'hidden' },
+    bitesProgressFill: { height: '100%', width: '68%', backgroundColor: '#D59A2A' },
+    bitesProgressHint: { color: '#4A3416', fontSize: 12, fontWeight: '600' },
+    bitesRedeemSection: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.lg, gap: Spacing.sm, backgroundColor: '#FFFFFF' },
+    bitesRedeemTitle: { color: '#111827', fontSize: 22, fontWeight: '900' },
+    rewardCard: {
+      backgroundColor: '#FFFFFF',
+      borderWidth: 1,
+      borderColor: '#E5E7EB',
+      borderRadius: Radius.lg,
+      padding: Spacing.sm,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+    },
+    rewardIconBox: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: '#DCEEE7',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    rewardIconText: { fontSize: 18 },
+    rewardBody: { flex: 1 },
+    rewardTitle: { color: '#111827', fontSize: 18, fontWeight: '800' },
+    rewardDesc: { color: '#6B7280', fontSize: 14, marginTop: 2 },
+    rewardPill: {
+      marginTop: Spacing.sm,
+      alignSelf: 'flex-start',
+      backgroundColor: '#F5E7CF',
+      borderRadius: Radius.full,
+      paddingHorizontal: 10,
+      paddingVertical: 3,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    rewardPillText: { color: '#4A3416', fontSize: 13, fontWeight: '700' },
+    rewardArrowBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 20,
+      backgroundColor: '#23A877',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    rewardArrowText: { color: '#fff', fontSize: 16, fontWeight: '900' },
+    bitesModalText: { color: c.textSecondary, fontSize: 14, lineHeight: 20 },
   });
 }
 
@@ -279,8 +405,60 @@ function RestaurantCardVertical({
 export default function HomeScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const [bitesModalOpen, setBitesModalOpen] = useState(false);
+  const bitesSheetTranslateY = useRef(new RNAnimated.Value(0)).current;
   const availableTonight = RESTAURANTS.filter((r) => !r.fullTonight && r.openNow);
   const nearYou = [...RESTAURANTS].sort((a, b) => a.distanceKm - b.distanceKm);
+
+  useEffect(() => {
+    if (bitesModalOpen) {
+      bitesSheetTranslateY.setValue(0);
+    }
+  }, [bitesModalOpen, bitesSheetTranslateY]);
+
+  const closeBitesModal = () => {
+    RNAnimated.timing(bitesSheetTranslateY, {
+      toValue: 520,
+      duration: 180,
+      useNativeDriver: true,
+    }).start(() => {
+      setBitesModalOpen(false);
+      bitesSheetTranslateY.setValue(0);
+    });
+  };
+
+  const bitesPanResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dy) > 4,
+      onPanResponderMove: (_, gestureState) => {
+        bitesSheetTranslateY.setValue(Math.max(0, gestureState.dy));
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        const shouldClose = gestureState.dy > 120 || gestureState.vy > 1.2;
+        if (shouldClose) {
+          closeBitesModal();
+          return;
+        }
+        RNAnimated.spring(bitesSheetTranslateY, {
+          toValue: 0,
+          useNativeDriver: true,
+          damping: 18,
+          stiffness: 220,
+          mass: 0.8,
+        }).start();
+      },
+      onPanResponderTerminate: () => {
+        RNAnimated.spring(bitesSheetTranslateY, {
+          toValue: 0,
+          useNativeDriver: true,
+          damping: 18,
+          stiffness: 220,
+          mass: 0.8,
+        }).start();
+      },
+    }),
+  ).current;
 
   return (
     <TabScreenFade>
@@ -329,8 +507,18 @@ export default function HomeScreen() {
         {nearYou.map((r) => (
           <RestaurantCardVertical key={r.id} restaurant={r} styles={styles} colors={colors} />
         ))}
+        <View style={styles.bitesSection}>
+          <Pressable style={styles.bitesCard} onPress={() => setBitesModalOpen(true)} accessibilityRole="button" accessibilityLabel="Open Bites details">
+            <View style={styles.bitesInfo}>
+              <Text style={styles.bitesLabel}>Your current Bites amount</Text>
+              <Text style={styles.bitesAmount}>{CURRENT_BITES}</Text>
+            </View>
+            <BitesIcon size={34} color="#EF9F27" backgroundColor={colors.card} />
+          </Pressable>
+        </View>
         </ScrollView>
       </SafeAreaView>
+
     </TabScreenFade>
   );
 }
