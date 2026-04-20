@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler';
 import { NunitoSans_900Black } from '@expo-google-fonts/nunito-sans';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { ThemeProvider, DefaultTheme, DarkTheme } from '@react-navigation/native';

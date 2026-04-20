@@ -1,13 +1,98 @@
+import * as Calendar from 'expo-calendar';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 
 import type { AppColors } from '@/constants/Theme';
 import { Radius, Spacing } from '@/constants/Theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
-import { getRestaurant, MOCK_BOOKINGS } from '@/data/mockData';
+import { Booking, getRestaurant } from '@/data/mockData';
+import { getBookingByRef } from '@/lib/bookingsStore';
+
+function parseBookingDateTime(dateLabel: string, timeLabel: string): { startDate: Date; endDate: Date } {
+  const now = new Date();
+  const lowerDate = dateLabel.trim().toLowerCase();
+  const monthMap: Record<string, number> = {
+    jan: 0,
+    feb: 1,
+    mar: 2,
+    apr: 3,
+    may: 4,
+    jun: 5,
+    jul: 6,
+    aug: 7,
+    sep: 8,
+    oct: 9,
+    nov: 10,
+    dec: 11,
+  };
+
+  const [hourRaw, minuteRaw] = timeLabel.trim().split(':');
+  const hours = Number(hourRaw);
+  const minutes = Number(minuteRaw);
+  const safeHours = Number.isFinite(hours) ? hours : 19;
+  const safeMinutes = Number.isFinite(minutes) ? minutes : 30;
+
+  let targetYear = now.getFullYear();
+  let targetMonth = now.getMonth();
+  let targetDay = now.getDate();
+
+  if (lowerDate === 'tomorrow') {
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    targetYear = tomorrow.getFullYear();
+    targetMonth = tomorrow.getMonth();
+    targetDay = tomorrow.getDate();
+  } else if (lowerDate !== 'today') {
+    const explicitIso = dateLabel.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const shortFormat = dateLabel.match(/^(?:[A-Za-z]{3}\s+)?(\d{1,2})\s+([A-Za-z]{3,})$/);
+
+    if (explicitIso) {
+      targetYear = Number(explicitIso[1]);
+      targetMonth = Number(explicitIso[2]) - 1;
+      targetDay = Number(explicitIso[3]);
+    } else if (shortFormat) {
+      const day = Number(shortFormat[1]);
+      const monthKey = shortFormat[2].slice(0, 3).toLowerCase();
+      const month = monthMap[monthKey];
+      if (Number.isFinite(day) && month != null) {
+        targetDay = day;
+        targetMonth = month;
+      }
+    }
+  }
+
+  const startDate = new Date(targetYear, targetMonth, targetDay, safeHours, safeMinutes, 0, 0);
+  const endDate = new Date(startDate.getTime() + 90 * 60 * 1000);
+  return { startDate, endDate };
+}
+
+async function getCalendarIdForEvents(): Promise<string> {
+  const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+  const writable = calendars.find((c) => c.allowsModifications);
+  if (writable?.id) return writable.id;
+
+  const defaultSource =
+    calendars.find((c) => c.source)?.source ??
+    ({
+      isLocalAccount: true,
+      name: 'Restaurant Booking App',
+      type: Calendar.SourceType.LOCAL,
+    } as Calendar.Source);
+
+  return Calendar.createCalendarAsync({
+    title: 'Restaurant bookings',
+    color: '#EF9F27',
+    entityType: Calendar.EntityTypes.EVENT,
+    sourceId: defaultSource.id,
+    source: defaultSource,
+    name: 'restaurant-bookings',
+    ownerAccount: 'personal',
+    accessLevel: Calendar.CalendarAccessLevel.OWNER,
+  });
+}
 
 function createStyles(c: AppColors) {
   return StyleSheet.create({
@@ -115,11 +200,20 @@ export default function BookingConfirmScreen() {
     guests?: string;
   }>();
 
-  const booking = useMemo(() => {
+  const [booking, setBooking] = useState<Booking | undefined>(undefined);
+
+  useEffect(() => {
+    let active = true;
     if (params.ref) {
-      return MOCK_BOOKINGS.find((b) => b.ref === params.ref);
+      void getBookingByRef(String(params.ref)).then((b) => {
+        if (active) setBooking(b);
+      });
+    } else {
+      setBooking(undefined);
     }
-    return undefined;
+    return () => {
+      active = false;
+    };
   }, [params.ref]);
 
   const restaurant = params.restaurantId ? getRestaurant(String(params.restaurantId)) : booking ? getRestaurant(booking.restaurantId) : undefined;
@@ -134,6 +228,32 @@ export default function BookingConfirmScreen() {
   const special = booking?.specialRequests;
 
   const qrPayload = JSON.stringify({ ref, restaurant: restaurantName, table: tableName });
+
+  const addToCalendar = async () => {
+    try {
+      const permission = await Calendar.requestCalendarPermissionsAsync();
+      if (permission.status !== 'granted') {
+        Alert.alert('Calendar access needed', 'Please allow calendar access to add this reservation.');
+        return;
+      }
+
+      const { startDate, endDate } = parseBookingDateTime(date, time);
+      const calendarId = await getCalendarIdForEvents();
+
+      await Calendar.createEventAsync(calendarId, {
+        title: `${restaurantName} reservation`,
+        startDate,
+        endDate,
+        location: address || undefined,
+        notes: `Booking ref: ${ref}\nTable: ${tableName}\nGuests: ${guests}${special ? `\nSpecial requests: ${special}` : ''}`,
+        alarms: [{ relativeOffset: -120 }],
+      });
+
+      Alert.alert('Added to calendar', 'Your booking has been added successfully.');
+    } catch {
+      Alert.alert('Could not add booking', 'Something went wrong while creating the calendar event.');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -193,7 +313,7 @@ export default function BookingConfirmScreen() {
           <Pressable style={styles.actionBtn}>
             <Text style={styles.actionBtnText}>Show QR</Text>
           </Pressable>
-          <Pressable style={styles.actionGhost}>
+          <Pressable style={styles.actionGhost} onPress={() => void addToCalendar()}>
             <Text style={styles.actionGhostText}>Add to calendar</Text>
           </Pressable>
           <Pressable style={styles.actionGhost}>

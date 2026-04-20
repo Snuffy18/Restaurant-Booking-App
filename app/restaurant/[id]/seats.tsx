@@ -3,11 +3,13 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { SeatPreviewIcon } from '@/components/SeatPreviewIcon';
+import { FloorPlanMap } from '@/components/floorplan/FloorPlanMap';
+import { AiTableRecommendation, FloorPlanState, TableAvailability, TRATTORIA_ROMA_FLOOR_PLAN } from '@/components/floorplan/floorPlanTypes';
 import type { AppColors } from '@/constants/Theme';
 import { Radius, Spacing } from '@/constants/Theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
-import { getRestaurant, tablesForRestaurant } from '@/data/mockData';
+import { Booking, getRestaurant } from '@/data/mockData';
+import { upsertUserBooking } from '@/lib/bookingsStore';
 
 function createStyles(c: AppColors) {
   return StyleSheet.create({
@@ -25,67 +27,43 @@ function createStyles(c: AppColors) {
     },
     back: { color: c.primary, fontWeight: '800', fontSize: 16 },
     title: { fontWeight: '900', fontSize: 17, color: c.text, flex: 1, textAlign: 'center' },
-    aiChip: {
-      alignSelf: 'flex-start',
-      marginHorizontal: Spacing.md,
-      marginTop: Spacing.md,
-      backgroundColor: c.aiMuted,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: Radius.full,
-      borderWidth: 1,
-      borderColor: c.aiBorder,
-    },
-    aiChipText: { color: c.ai, fontWeight: '900', fontSize: 12 },
-    featured: {
-      margin: Spacing.md,
-      padding: Spacing.md,
-      borderRadius: Radius.lg,
+    partyRow: {
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
       backgroundColor: c.card,
-      borderWidth: 1,
-      borderColor: c.aiBorder,
+      borderBottomWidth: 1,
+      borderBottomColor: c.border,
     },
-    featuredHead: { flexDirection: 'row', gap: Spacing.md, alignItems: 'center' },
-    featuredName: { fontSize: 20, fontWeight: '900', color: c.text },
-    featuredMeta: { marginTop: 4, color: c.textSecondary, fontWeight: '600' },
-    whyBox: {
-      marginTop: Spacing.md,
-      backgroundColor: c.inputBg,
-      borderRadius: Radius.md,
-      padding: Spacing.md,
+    partyLabel: { color: c.textMuted, fontWeight: '700', fontSize: 12 },
+    partyChip: {
       borderWidth: 1,
       borderColor: c.border,
+      borderRadius: Radius.full,
+      backgroundColor: c.inputBg,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
     },
-    whyTitle: { fontWeight: '900', color: c.ai, marginBottom: 6 },
-    whyBody: { color: c.textSecondary, lineHeight: 20 },
-    selectRow: {
-      marginTop: Spacing.md,
-      backgroundColor: c.ai,
-      paddingVertical: 12,
-      borderRadius: Radius.md,
-      alignItems: 'center',
-    },
-    selectRowOn: { backgroundColor: c.primary },
-    selectText: { color: '#fff', fontWeight: '900' },
-    disabled: { opacity: 0.5 },
-    sectionLabel: { marginHorizontal: Spacing.md, marginBottom: Spacing.sm, fontWeight: '900', color: c.text },
-    tableCard: {
+    partyChipOn: { backgroundColor: c.primaryMuted, borderColor: c.primary },
+    partyChipText: { color: c.textSecondary, fontWeight: '700', fontSize: 12 },
+    partyChipTextOn: { color: c.primary },
+    infoCard: {
       marginHorizontal: Spacing.md,
+      marginTop: Spacing.sm,
       marginBottom: Spacing.sm,
       padding: Spacing.md,
-      borderRadius: Radius.lg,
+      borderRadius: Radius.md,
       backgroundColor: c.card,
       borderWidth: 1,
       borderColor: c.border,
     },
-    tableCardMuted: { opacity: 0.55 },
-    tableCardOn: { borderColor: c.primary, backgroundColor: c.primaryMuted },
-    tableRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-    tableName: { fontWeight: '900', color: c.text, fontSize: 16 },
-    tableMeta: { marginTop: 4, color: c.textSecondary, fontSize: 13 },
-    takenBadge: { backgroundColor: c.chipMuted, paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.full },
-    takenBadgeText: { fontWeight: '900', fontSize: 11, color: c.textMuted },
-    selectedText: { fontWeight: '900', color: c.primary },
+    infoTitle: { color: c.text, fontWeight: '800', fontSize: 14 },
+    infoSub: { color: c.textSecondary, marginTop: 4, lineHeight: 18 },
+    tagsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+    tag: { backgroundColor: c.inputBg, borderRadius: Radius.full, paddingHorizontal: 8, paddingVertical: 4 },
+    tagText: { color: c.textMuted, fontSize: 11, fontWeight: '700' },
     sticky: {
       position: 'absolute',
       left: 0,
@@ -107,20 +85,34 @@ export default function SeatsScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { id, date, time, guests } = useLocalSearchParams<{ id: string; date?: string; time?: string; guests?: string }>();
   const restaurant = useMemo(() => (id ? getRestaurant(String(id)) : undefined), [id]);
-  const tables = useMemo(() => (id ? tablesForRestaurant(String(id)) : []), [id]);
-  const defaultSelected = tables.find((t) => t.aiRecommended && !t.taken)?.id ?? tables.find((t) => !t.taken)?.id;
-  const [selectedId, setSelectedId] = useState<string | undefined>(defaultSelected);
-  const [whyOpen, setWhyOpen] = useState(true);
+  const parsedGuests = Number(guests ?? '2');
+  const [partySize, setPartySize] = useState(Number.isFinite(parsedGuests) ? parsedGuests : 2);
+  const [selectedId, setSelectedId] = useState<string | null>('t1');
   const insets = useSafeAreaInsets();
-
-  const selected = tables.find((t) => t.id === selectedId);
-  const aiTable = tables.find((t) => t.aiRecommended);
-
-  const pick = (tid: string) => {
-    setSelectedId(tid);
-    if (aiTable && tid !== aiTable.id) setWhyOpen(false);
-    else setWhyOpen(true);
+  const aiRecommendation: AiTableRecommendation = {
+    tableId: 't1',
+    reason: 'Quiet window seat with natural light — ideal for your selected party size.',
+    confidence: 0.92,
   };
+
+  const availability = useMemo<Record<string, TableAvailability>>(
+    () => ({
+      t3: { tableId: 't3', status: 'taken', slotTime: `${date ?? 'today'} ${time ?? '19:30'}` },
+      t5: { tableId: 't5', status: 'taken', slotTime: `${date ?? 'today'} ${time ?? '19:30'}` },
+      t11: { tableId: 't11', status: 'taken', slotTime: `${date ?? 'today'} ${time ?? '19:30'}` },
+    }),
+    [date, time],
+  );
+
+  const floorPlanState: FloorPlanState = {
+    selectedTableId: selectedId,
+    availability,
+    aiRecommendation,
+    partySize,
+    incompatibleTableIds: [],
+  };
+
+  const selectedTable = selectedId ? TRATTORIA_ROMA_FLOOR_PLAN.tables.find((t) => t.id === selectedId) : null;
 
   if (!restaurant) {
     return (
@@ -130,7 +122,7 @@ export default function SeatsScreen() {
     );
   }
 
-  const canReserve = selected && !selected.taken;
+  const canReserve = !!selectedTable;
 
   return (
     <View style={styles.root}>
@@ -144,81 +136,86 @@ export default function SeatsScreen() {
         <View style={{ width: 48 }} />
       </SafeAreaView>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 + insets.bottom }} showsVerticalScrollIndicator={false}>
-        <View style={styles.aiChip}>
-          <Text style={styles.aiChipText}>AI recommended for you</Text>
-        </View>
-
-        {aiTable ? (
-          <View style={styles.featured}>
-            <View style={styles.featuredHead}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.featuredName}>{aiTable.name}</Text>
-                <Text style={styles.featuredMeta}>
-                  {aiTable.seats} guests · {aiTable.vibes.join(' · ')}
-                </Text>
-              </View>
-              <SeatPreviewIcon size={48} />
-            </View>
-            {whyOpen && selectedId === aiTable.id ? (
-              <View style={styles.whyBox}>
-                <Text style={styles.whyTitle}>Why we picked this</Text>
-                <Text style={styles.whyBody}>{aiTable.whyReason}</Text>
-              </View>
-            ) : null}
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom }} showsVerticalScrollIndicator={false}>
+        <View style={styles.partyRow}>
+          <Text style={styles.partyLabel}>Guests</Text>
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((size) => (
             <Pressable
-              onPress={() => pick(aiTable.id)}
-              style={[styles.selectRow, selectedId === aiTable.id && styles.selectRowOn, aiTable.taken && styles.disabled]}>
-              <Text style={styles.selectText}>{aiTable.taken ? 'Taken' : selectedId === aiTable.id ? 'Selected' : 'Select'}</Text>
-            </Pressable>
-          </View>
-        ) : null}
-
-        <Text style={styles.sectionLabel}>Other available tables</Text>
-        {tables
-          .filter((t) => !t.aiRecommended)
-          .map((t) => (
-            <Pressable
-              key={t.id}
-              onPress={() => !t.taken && pick(t.id)}
-              style={[styles.tableCard, t.taken && styles.tableCardMuted, selectedId === t.id && styles.tableCardOn]}>
-              <View style={styles.tableRow}>
-                <SeatPreviewIcon size={40} muted={t.taken} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.tableName}>{t.name}</Text>
-                  <Text style={styles.tableMeta}>
-                    {t.seats} seats · {t.vibes.join(' · ')}
-                  </Text>
-                </View>
-                {t.taken ? (
-                  <View style={styles.takenBadge}>
-                    <Text style={styles.takenBadgeText}>Taken</Text>
-                  </View>
-                ) : selectedId === t.id ? (
-                  <Text style={styles.selectedText}>Selected</Text>
-                ) : null}
-              </View>
+              key={size}
+              onPress={() => setPartySize(size)}
+              style={[styles.partyChip, partySize === size && styles.partyChipOn]}>
+              <Text style={[styles.partyChipText, partySize === size && styles.partyChipTextOn]}>{size}</Text>
             </Pressable>
           ))}
+        </View>
+
+        <FloorPlanMap
+          config={TRATTORIA_ROMA_FLOOR_PLAN}
+          state={floorPlanState}
+          onTableSelect={setSelectedId}
+          onTableDeselect={() => setSelectedId(null)}
+          mapHeight={360}
+        />
+
+        {selectedTable ? (
+          <View style={styles.infoCard}>
+            <Text style={styles.infoTitle}>
+              {selectedTable.label} · {selectedTable.description}
+            </Text>
+            <Text style={styles.infoSub}>
+              Seats {selectedTable.minCapacity}-{selectedTable.maxCapacity} · {selectedTable.position ?? 'main floor'}
+            </Text>
+            <View style={styles.tagsWrap}>
+              {selectedTable.tags.map((tag) => (
+                <View key={tag} style={styles.tag}>
+                  <Text style={styles.tagText}>{tag}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
       </ScrollView>
 
       <View style={[styles.sticky, { paddingBottom: insets.bottom + Spacing.sm }]}>
         <Pressable
           disabled={!canReserve}
           style={[styles.cta, !canReserve && { opacity: 0.4 }]}
-          onPress={() =>
-            router.push({
-              pathname: '/booking/confirm',
-              params: {
-                restaurantId: String(id),
-                tableName: selected?.name ?? '',
-                ref: `#TRM-${Math.floor(10000 + Math.random() * 90000)}`,
-                date: date ?? 'Today',
-                time: time ?? '19:30',
-                guests: guests ?? '2',
-              },
-            })
-          }>
+          onPress={() => {
+            const restaurantId = String(id);
+            const generatedRef = `#TRM-${Math.floor(10000 + Math.random() * 90000)}`;
+            const bookingDate = date ?? 'Today';
+            const bookingTime = time ?? '19:30';
+            const bookingGuests = Number(guests ?? '2');
+            const restaurant = getRestaurant(restaurantId);
+            const createdBooking: Booking = {
+              id: `ub-${Date.now()}`,
+              ref: generatedRef,
+              restaurantId,
+              restaurantName: restaurant?.name ?? 'Restaurant',
+              image: restaurant?.image ?? '',
+              address: restaurant?.address ?? '',
+              date: bookingDate,
+              time: bookingTime,
+              guests: bookingGuests,
+              tableName: selectedTable?.label ?? '',
+              status: 'upcoming',
+              reminderText: 'Reminder set · 2 hours before · Free cancel until 48h prior to your booking',
+            };
+
+            void upsertUserBooking(createdBooking).finally(() => {
+              router.push({
+                pathname: '/booking/confirm',
+                params: {
+                  restaurantId,
+                  tableName: createdBooking.tableName,
+                  ref: generatedRef,
+                  date: bookingDate,
+                  time: bookingTime,
+                  guests: String(bookingGuests),
+                },
+              });
+            });
+          }}>
           <Text style={styles.ctaText}>Reserve selected table</Text>
         </Pressable>
       </View>

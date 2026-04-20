@@ -1,6 +1,8 @@
 import { Image } from 'expo-image';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,7 +10,8 @@ import type { AppColors } from '@/constants/Theme';
 import { Radius, Spacing } from '@/constants/Theme';
 import { TabScreenFade } from '@/components/TabScreenFade';
 import { useAppTheme } from '@/contexts/AppThemeContext';
-import { MOCK_BOOKINGS, Booking } from '@/data/mockData';
+import { Booking } from '@/data/mockData';
+import { getAllBookings } from '@/lib/bookingsStore';
 
 type Tab = 'upcoming' | 'past';
 
@@ -20,13 +23,13 @@ function createStyles(c: AppColors) {
       flexDirection: 'row',
       marginHorizontal: Spacing.md,
       backgroundColor: c.card,
-      borderRadius: Radius.md,
+      borderRadius: Radius.lg,
       padding: 4,
       marginBottom: Spacing.md,
       borderWidth: 1,
       borderColor: c.border,
     },
-    tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: Radius.sm },
+    tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: Radius.md },
     tabOn: { backgroundColor: c.primaryMuted },
     tabText: { fontWeight: '700', color: c.textSecondary },
     tabTextOn: { color: c.primary },
@@ -74,8 +77,11 @@ function createStyles(c: AppColors) {
       borderRadius: Radius.md,
       borderWidth: 1,
       borderColor: c.aiBorder,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
     },
-    reminderText: { color: c.ai, fontWeight: '600', fontSize: 13 },
+    reminderText: { flex: 1, flexShrink: 1, color: c.ai, fontWeight: '600', fontSize: 13, lineHeight: 18 },
     actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.md },
     actionBtn: {
       backgroundColor: c.primary,
@@ -99,6 +105,32 @@ function createStyles(c: AppColors) {
     statusBadgeText: { fontWeight: '800', fontSize: 11 },
     statusTextOk: { color: c.primary },
     statusTextBad: { color: c.danger },
+    fillerCard: {
+      borderStyle: 'dashed',
+      padding: Spacing.md,
+      marginTop: Spacing.sm,
+      alignItems: 'center',
+      gap: Spacing.sm,
+    },
+    fillerIconWrap: {
+      width: 40,
+      height: 40,
+      borderRadius: Radius.full,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    fillerTitle: { fontSize: 15, fontWeight: '700', color: c.textSecondary, textAlign: 'center' },
+    fillerCta: {
+      backgroundColor: c.primaryMuted,
+      borderRadius: Radius.full,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 8,
+      marginTop: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    fillerCtaText: { color: c.primary, fontWeight: '800' },
   });
 }
 
@@ -142,6 +174,7 @@ function UpcomingCard({ booking: b, styles }: { booking: Booking; styles: Bookin
       </View>
       {b.reminderText ? (
         <View style={styles.reminder}>
+          <Ionicons name="notifications-outline" size={20} color={colors.ai} />
           <Text style={styles.reminderText}>{b.reminderText}</Text>
         </View>
       ) : null}
@@ -194,8 +227,24 @@ export default function BookingsScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [tab, setTab] = useState<Tab>('upcoming');
-  const upcoming = MOCK_BOOKINGS.filter((b) => b.status === 'upcoming');
-  const past = MOCK_BOOKINGS.filter((b) => b.status !== 'upcoming');
+  const [bookings, setBookings] = useState<Booking[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      void getAllBookings().then((next) => {
+        if (active) setBookings(next);
+      });
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
+
+  const upcoming = bookings.filter((b) => b.status === 'upcoming');
+  const past = bookings.filter((b) => b.status !== 'upcoming');
+  const activeBookings = tab === 'upcoming' ? upcoming : past;
+  const shouldShowFiller = activeBookings.length === 1;
 
   return (
     <TabScreenFade>
@@ -213,6 +262,22 @@ export default function BookingsScreen() {
           {tab === 'upcoming'
             ? upcoming.map((b) => <UpcomingCard key={b.id} booking={b} styles={styles} />)
             : past.map((b) => <PastCard key={b.id} booking={b} styles={styles} />)}
+          {shouldShowFiller ? (
+            <View style={styles.fillerCard}>
+              <View style={styles.fillerIconWrap}>
+                <Ionicons name="calendar-outline" size={40} color={colors.primary} />
+              </View>
+              <Text style={styles.fillerTitle}>
+                {tab === 'upcoming'
+                  ? 'No more upcoming bookings \n find your next table.'
+                  : 'No more past bookings - discover your next favorite spot.'}
+              </Text>
+              <Pressable style={styles.fillerCta} onPress={() => router.push('/(tabs)/explore')}>
+                <Text style={styles.fillerCtaText}>Explore restaurants</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+              </Pressable>
+            </View>
+          ) : null}
         </ScrollView>
       </SafeAreaView>
     </TabScreenFade>
