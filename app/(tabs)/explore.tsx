@@ -1,7 +1,12 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Picker } from '@react-native-picker/picker';
+import AntDesign from '@expo/vector-icons/AntDesign';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, InteractionManager, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -28,7 +33,7 @@ const FILTERS = [
   { id: 'outdoor', label: 'Outdoor' },
   { id: 'rating', label: 'Rating' },
 ] as const satisfies ReadonlyArray<{ id: FilterId; label: string }>;
-const TOP_SEARCH_OPTIONS = ['Offers', 'Best rated', 'Italian', 'Sushi', 'Indian', 'Pizza'] as const;
+const TOP_SEARCH_OPTIONS = ['Offers', 'Best rated', 'Italian', 'Sushi', 'Indian', 'Pizza', 'Brunch', 'Steakhouse'] as const;
 const TOP_SEARCH_SUBTITLES: Record<(typeof TOP_SEARCH_OPTIONS)[number], string> = {
   Offers: 'Reso Advantages',
   'Best rated': 'Highest user ratings',
@@ -36,8 +41,9 @@ const TOP_SEARCH_SUBTITLES: Record<(typeof TOP_SEARCH_OPTIONS)[number], string> 
   Sushi: 'Fresh rolls and sashimi',
   Indian: 'Spiced curries and tandoor',
   Pizza: 'Stone-baked favorites',
+  Brunch: 'Late morning favorites',
+  Steakhouse: 'Premium grilled cuts',
 };
-const SEE_ALL_RESTAURANTS_ICON = require('../../assets/images/storefront.fill.svg');
 const OFFERS_PERCENT_ICON = require('../../assets/images/percent.svg');
 const BEST_RATED_ICON = require('../../assets/images/fork.knife.circle.fill.svg');
 const ITALIAN_ICON = require('../../assets/images/fork.knife.svg');
@@ -147,6 +153,7 @@ function createStyles(c: AppColors) {
     },
     stickySectionHeader: {
       backgroundColor: c.background,
+      paddingVertical: Spacing.sm,
     },
     continueSectionHeader: {
       marginTop: Spacing.md,
@@ -587,7 +594,6 @@ export default function ExploreScreen() {
   const sortLabel = sort === 'nearest' ? 'Nearest first' : sort === 'rating' ? 'Rating' : 'Availability';
   const hasQuery = query.trim().length > 0;
   const [lastVisitedRestaurants, setLastVisitedRestaurants] = useState<(typeof RESTAURANTS)[number][]>([]);
-  const [seeAllIconFailed, setSeeAllIconFailed] = useState(false);
   const [topSearchIconFailures, setTopSearchIconFailures] = useState<Partial<Record<(typeof TOP_SEARCH_OPTIONS)[number], boolean>>>({});
   const openRestaurant = useCallback(
     (restaurantId: string, extraParams?: { date?: string; time?: string; guests?: string }) => {
@@ -630,6 +636,8 @@ export default function ExploreScreen() {
       Sushi: SUSHI_ICON,
       Indian: INDIAN_ICON,
       Pizza: PIZZA_ICON,
+      Brunch: SUSHI_ICON,
+      Steakhouse: BEST_RATED_ICON,
     }),
     [],
   );
@@ -641,6 +649,8 @@ export default function ExploreScreen() {
       Sushi: 'glass',
       Indian: 'cutlery',
       Pizza: 'cutlery',
+      Brunch: 'coffee',
+      Steakhouse: 'cutlery',
     }) satisfies Record<(typeof TOP_SEARCH_OPTIONS)[number], React.ComponentProps<typeof FontAwesome>['name']>,
     [],
   );
@@ -782,16 +792,7 @@ export default function ExploreScreen() {
             accessibilityRole="button"
             accessibilityLabel="See all restaurants">
             <View style={styles.seeAllLeft}>
-              {seeAllIconFailed ? (
-                <FontAwesome name="building-o" size={20} color={colors.primary} />
-              ) : (
-                <Image
-                  source={SEE_ALL_RESTAURANTS_ICON}
-                  style={[styles.seeAllIcon, { tintColor: colors.primary }]}
-                  contentFit="contain"
-                  onError={() => setSeeAllIconFailed(true)}
-                />
-              )}
+              <Ionicons name="restaurant" size={20} color={colors.primary} />
               <Text style={styles.seeAllText}>See all restaurants</Text>
             </View>
             <FontAwesome name="chevron-right" size={16} color={colors.primary} />
@@ -846,16 +847,30 @@ export default function ExploreScreen() {
                 accessibilityLabel={`Search ${option}`}>
                 <View style={styles.seeAllLeft}>
                   <View style={styles.topSearchIconWrap}>
-                    {topSearchIconFailures[option] ? (
-                      <FontAwesome name={topSearchFallbackIcons[option]} size={16} color={colors.primary} />
-                    ) : (
-                      <Image
-                        source={topSearchIcons[option]}
-                        style={[styles.topSearchIcon, { tintColor: colors.primary }]}
-                        contentFit="contain"
-                        onError={() => setTopSearchIconFailures((prev) => ({ ...prev, [option]: true }))}
-                      />
-                    )}
+                      {option === 'Steakhouse' ? (
+                        <MaterialCommunityIcons name="food-steak" size={20} color={colors.primary} />
+                      ) : option === 'Offers' ? (
+                        <MaterialIcons name="local-offer" size={20} color={colors.primary} />
+                      ) : option === 'Best rated' ? (
+                        <MaterialIcons name="trending-up" size={20} color={colors.primary} />
+                      ) : option === 'Brunch' ? (
+                        <MaterialIcons name="brunch-dining" size={20} color={colors.primary} />
+                      ) : option === 'Pizza' ? (
+                        <FontAwesome5 name="pizza-slice" size={18} color={colors.primary} />
+                      ) : option === 'Indian' ? (
+                        <AntDesign name="fire" size={19} color={colors.primary} />
+                      ) : option === 'Italian' ? (
+                        <MaterialCommunityIcons name="pasta" size={20} color={colors.primary} />
+                      ) : topSearchIconFailures[option] ? (
+                        <FontAwesome name={topSearchFallbackIcons[option]} size={16} color={colors.primary} />
+                      ) : (
+                        <Image
+                          source={topSearchIcons[option]}
+                          style={[styles.topSearchIcon, { tintColor: colors.primary }]}
+                          contentFit="contain"
+                          onError={() => setTopSearchIconFailures((prev) => ({ ...prev, [option]: true }))}
+                        />
+                      )}
                   </View>
                   <View style={styles.topSearchTextWrap}>
                     <Text style={styles.topSearchOptionText}>{option}</Text>
