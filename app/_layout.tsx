@@ -1,3 +1,4 @@
+import { NunitoSans_900Black } from '@expo-google-fonts/nunito-sans';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { ThemeProvider, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
@@ -35,7 +36,13 @@ function RootLayoutNav() {
   return (
     <ThemeProvider value={navTheme}>
       <StatusBar style={resolvedScheme === 'dark' ? 'light' : 'dark'} />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
+      <Stack
+        screenOptions={({ route }) => ({
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.background },
+          ...(route.name === 'ai-chat' ? { animation: 'slide_from_right' as const } : {}),
+        })}
+      />
     </ThemeProvider>
   );
 }
@@ -43,6 +50,8 @@ function RootLayoutNav() {
 export default function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    BebasNeue: require('../assets/fonts/BebasNeue-Regular.ttf'),
+    NunitoSans_900Black,
     ...FontAwesome.font,
   });
 

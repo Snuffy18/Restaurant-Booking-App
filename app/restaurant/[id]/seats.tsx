@@ -105,7 +105,7 @@ function createStyles(c: AppColors) {
 export default function SeatsScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, date, time, guests } = useLocalSearchParams<{ id: string; date?: string; time?: string; guests?: string }>();
   const restaurant = useMemo(() => (id ? getRestaurant(String(id)) : undefined), [id]);
   const tables = useMemo(() => (id ? tablesForRestaurant(String(id)) : []), [id]);
   const defaultSelected = tables.find((t) => t.aiRecommended && !t.taken)?.id ?? tables.find((t) => !t.taken)?.id;
@@ -213,6 +213,9 @@ export default function SeatsScreen() {
                 restaurantId: String(id),
                 tableName: selected?.name ?? '',
                 ref: `#TRM-${Math.floor(10000 + Math.random() * 90000)}`,
+                date: date ?? 'Today',
+                time: time ?? '19:30',
+                guests: guests ?? '2',
               },
             })
           }>

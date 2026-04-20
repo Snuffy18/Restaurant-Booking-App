@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,9 +8,26 @@ import type { AppColors } from '@/constants/Theme';
 import { Radius, Spacing } from '@/constants/Theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
 import { MOCK_USER, RESTAURANTS, Restaurant } from '@/data/mockData';
+import { AiHomeBanner } from '@/components/AiHomeBanner';
+import { TabScreenFade } from '@/components/TabScreenFade';
 import { requestExploreSearchFocus } from '@/lib/exploreSearchFocus';
 
 const FILTER_CHIPS = ['All', 'Italian', 'Japanese', 'Romantic', 'Family', 'Outdoor'];
+
+/** “Tables left” pills — semantic green/red only, not app accent */
+const AVAIL_PILL = {
+  green: { bg: '#DCFCE7', border: '#22C55E', text: '#166534' },
+  orange: { bg: '#FFEDD5', border: '#FB923C', text: '#C2410C' },
+  red: { bg: '#FEE2E2', border: '#EF4444', text: '#B91C1C' },
+} as const;
+
+type AvailabilityTone = 'red' | 'orange' | 'green';
+
+function toneForAvailabilityLeft(n: number): AvailabilityTone {
+  if (n <= 1) return 'red';
+  if (n <= 5) return 'orange';
+  return 'green';
+}
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -28,7 +45,7 @@ function createStyles(c: AppColors) {
     searchBox: {
       flex: 1,
       backgroundColor: c.card,
-      borderRadius: Radius.md,
+      borderRadius: Radius.full,
       paddingVertical: 14,
       paddingHorizontal: Spacing.md,
       borderWidth: 1,
@@ -55,40 +72,12 @@ function createStyles(c: AppColors) {
       borderWidth: 1,
       borderColor: c.border,
     },
-    hChipText: { fontWeight: '600', color: c.text },
+    hChipText: { fontSize: 14, fontWeight: '600', color: c.text },
     aiBannerSection: {
       paddingHorizontal: Spacing.md,
       marginTop: Spacing.md,
       marginBottom: Spacing.lg,
     },
-    aiBannerInner: {
-      borderRadius: Radius.lg,
-      backgroundColor: c.aiMuted,
-      borderWidth: 1,
-      borderColor: c.aiBorder,
-      overflow: 'hidden',
-    },
-    aiBannerCopy: {
-      paddingVertical: Spacing.md,
-      paddingHorizontal: Spacing.md,
-    },
-    aiBannerHead: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: Spacing.md,
-    },
-    aiSparkles: {
-      width: 32,
-      height: 32,
-      marginTop: 2,
-      tintColor: c.text,
-    },
-    aiBannerTextCol: {
-      flex: 1,
-      gap: Spacing.sm,
-    },
-    aiBannerTitle: { fontWeight: '800', color: c.ai, fontSize: 16, lineHeight: 22 },
-    aiBannerSub: { color: c.textSecondary, lineHeight: 22, fontSize: 15 },
     sectionHead: { paddingHorizontal: Spacing.md, marginBottom: Spacing.sm },
     sectionTitle: { fontSize: 18, fontWeight: '800', color: c.text },
     hCards: { gap: Spacing.md, paddingHorizontal: Spacing.md, marginBottom: Spacing.lg },
@@ -105,14 +94,44 @@ function createStyles(c: AppColors) {
       position: 'absolute',
       top: Spacing.sm,
       right: Spacing.sm,
-      backgroundColor: c.badgeScrim,
       paddingHorizontal: 10,
       paddingVertical: 4,
       borderRadius: Radius.full,
     },
-    hBadgeText: { color: '#fff', fontWeight: '700', fontSize: 12 },
-    hName: { paddingHorizontal: Spacing.md, marginTop: Spacing.sm, fontWeight: '800', color: c.text, fontSize: 16 },
-    hMeta: { paddingHorizontal: Spacing.md, paddingBottom: Spacing.md, color: c.textSecondary, fontSize: 13 },
+    /** “Ask” / unknown availability on horizontal card */
+    hBadgeNeutral: { backgroundColor: c.badgeScrim },
+    hBadgeTextNeutral: { color: '#fff', fontWeight: '700', fontSize: 12 },
+    hBadgeGreen: {
+      backgroundColor: AVAIL_PILL.green.bg,
+      borderWidth: 1,
+      borderColor: AVAIL_PILL.green.border,
+    },
+    hBadgeOrange: {
+      backgroundColor: AVAIL_PILL.orange.bg,
+      borderWidth: 1,
+      borderColor: AVAIL_PILL.orange.border,
+    },
+    hBadgeTextGreen: { color: AVAIL_PILL.green.text, fontWeight: '700', fontSize: 12 },
+    hBadgeTextOrange: { color: AVAIL_PILL.orange.text, fontWeight: '700', fontSize: 12 },
+    hBadgeRed: {
+      backgroundColor: AVAIL_PILL.red.bg,
+      borderWidth: 1,
+      borderColor: AVAIL_PILL.red.border,
+    },
+    hBadgeTextRed: { color: AVAIL_PILL.red.text, fontWeight: '700', fontSize: 12 },
+    hName: {
+      paddingHorizontal: Spacing.md,
+      marginTop: Spacing.sm,
+      fontWeight: '800',
+      fontSize: 16,
+      color: c.text,
+    },
+    hMeta: {
+      paddingHorizontal: Spacing.md,
+      paddingBottom: Spacing.md,
+      color: c.textSecondary,
+      fontSize: 13,
+    },
     vCard: {
       flexDirection: 'row',
       marginHorizontal: Spacing.md,
@@ -141,24 +160,56 @@ function createStyles(c: AppColors) {
     softBadge: {
       alignSelf: 'flex-start',
       marginTop: Spacing.sm,
-      backgroundColor: c.primaryMuted,
       paddingHorizontal: 8,
       paddingVertical: 4,
       borderRadius: Radius.full,
+      borderWidth: 1,
     },
-    softBadgeText: { fontSize: 11, fontWeight: '700', color: c.primary },
+    softBadgeGreen: {
+      backgroundColor: AVAIL_PILL.green.bg,
+      borderColor: AVAIL_PILL.green.border,
+    },
+    softBadgeOrange: {
+      backgroundColor: AVAIL_PILL.orange.bg,
+      borderColor: AVAIL_PILL.orange.border,
+    },
+    softBadgeRed: {
+      backgroundColor: AVAIL_PILL.red.bg,
+      borderColor: AVAIL_PILL.red.border,
+    },
+    softBadgeTextGreen: { fontSize: 11, fontWeight: '700', color: AVAIL_PILL.green.text },
+    softBadgeTextOrange: { fontSize: 11, fontWeight: '700', color: AVAIL_PILL.orange.text },
+    softBadgeTextRed: { fontSize: 11, fontWeight: '700', color: AVAIL_PILL.red.text },
   });
 }
 
 type HomeStyles = ReturnType<typeof createStyles>;
 
 function RestaurantCardHorizontal({ restaurant: r, styles }: { restaurant: Restaurant; styles: HomeStyles }) {
-  const left = r.availabilityTonight != null ? `${r.availabilityTonight} left` : 'Ask';
+  const n = r.availabilityTonight;
+  const left = n != null ? `${n} left` : 'Ask';
+  const tone = n != null ? toneForAvailabilityLeft(n) : null;
+  const pillStyle =
+    tone === 'red'
+      ? [styles.hBadge, styles.hBadgeRed]
+      : tone === 'orange'
+        ? [styles.hBadge, styles.hBadgeOrange]
+        : tone === 'green'
+          ? [styles.hBadge, styles.hBadgeGreen]
+          : [styles.hBadge, styles.hBadgeNeutral];
+  const pillTextStyle =
+    tone === 'red'
+      ? styles.hBadgeTextRed
+      : tone === 'orange'
+        ? styles.hBadgeTextOrange
+        : tone === 'green'
+          ? styles.hBadgeTextGreen
+          : styles.hBadgeTextNeutral;
   return (
     <Pressable style={styles.hCard} onPress={() => router.push(`/restaurant/${r.id}`)}>
       <Image source={{ uri: r.image }} style={styles.hImage} contentFit="cover" />
-      <View style={styles.hBadge}>
-        <Text style={styles.hBadgeText}>{left}</Text>
+      <View style={pillStyle}>
+        <Text style={pillTextStyle}>{left}</Text>
       </View>
       <Text style={styles.hName} numberOfLines={1}>
         {r.name}
@@ -199,8 +250,25 @@ function RestaurantCardVertical({
             <Text style={styles.fullBadgeText}>Full tonight</Text>
           </View>
         ) : r.availabilityTonight != null ? (
-          <View style={styles.softBadge}>
-            <Text style={styles.softBadgeText}>{r.availabilityTonight} tables left tonight</Text>
+          <View
+            style={[
+              styles.softBadge,
+              toneForAvailabilityLeft(r.availabilityTonight) === 'red'
+                ? styles.softBadgeRed
+                : toneForAvailabilityLeft(r.availabilityTonight) === 'orange'
+                  ? styles.softBadgeOrange
+                  : styles.softBadgeGreen,
+            ]}>
+            <Text
+              style={
+                toneForAvailabilityLeft(r.availabilityTonight) === 'red'
+                  ? styles.softBadgeTextRed
+                  : toneForAvailabilityLeft(r.availabilityTonight) === 'orange'
+                    ? styles.softBadgeTextOrange
+                    : styles.softBadgeTextGreen
+              }>
+              {r.availabilityTonight} tables left tonight
+            </Text>
           </View>
         ) : null}
       </View>
@@ -215,8 +283,9 @@ export default function HomeScreen() {
   const nearYou = [...RESTAURANTS].sort((a, b) => a.distanceKm - b.distanceKm);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+    <TabScreenFade>
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <Text style={styles.greeting}>
           {greeting()}, {MOCK_USER.firstName}
         </Text>
@@ -242,26 +311,7 @@ export default function HomeScreen() {
         </ScrollView>
 
         <View style={styles.aiBannerSection}>
-          <Link href="/ai-chat" asChild>
-            <Pressable style={({ pressed }) => [styles.aiBannerInner, pressed && { opacity: 0.95 }]}>
-              <View style={styles.aiBannerCopy}>
-                <View style={styles.aiBannerHead}>
-                  <Image
-                    source={require('../../assets/images/ai-sparkles.png')}
-                    style={styles.aiSparkles}
-                    contentFit="contain"
-                    accessibilityLabel="AI"
-                  />
-                  <View style={styles.aiBannerTextCol}>
-                    <Text style={styles.aiBannerTitle}>Not sure where to go?</Text>
-                    <Text style={styles.aiBannerSub}>
-                      Ask AI — describe the night you want in plain language.
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </Pressable>
-          </Link>
+          <AiHomeBanner />
         </View>
 
         <View style={styles.sectionHead}>
@@ -279,7 +329,8 @@ export default function HomeScreen() {
         {nearYou.map((r) => (
           <RestaurantCardVertical key={r.id} restaurant={r} styles={styles} colors={colors} />
         ))}
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </TabScreenFade>
   );
 }

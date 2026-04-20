@@ -1,3 +1,10 @@
+import {
+  ACCENT_PRIMARY_BY_HEX,
+  AppAccentAI,
+  DEFAULT_ACCENT_HEX,
+  type AccentHex,
+} from './AppAccent';
+
 export type AppColors = {
   primary: string;
   primaryMuted: string;
@@ -24,12 +31,7 @@ export type AppColors = {
   badgeScrim: string;
 };
 
-/** Light palette (default product look) */
-export const lightColors: AppColors = {
-  primary: '#1D9E75',
-  primaryMuted: '#E8F7F2',
-  ai: '#534AB7',
-  aiMuted: '#EDEAF9',
+const LIGHT_BASE = {
   background: '#F4F5F7',
   card: '#FFFFFF',
   text: '#111827',
@@ -38,21 +40,14 @@ export const lightColors: AppColors = {
   border: '#E5E7EB',
   danger: '#DC2626',
   dangerMuted: '#FEE2E2',
-  success: '#1D9E75',
   warning: '#F59E0B',
   overlay: 'rgba(0,0,0,0.45)',
   inputBg: '#F4F5F7',
-  aiBorder: '#D4CFF5',
   chipMuted: '#F3F4F6',
   badgeScrim: 'rgba(17,24,39,0.75)',
-};
+} as const;
 
-/** Dark palette — keeps green primary + purple AI accents */
-export const darkColors: AppColors = {
-  primary: '#2EB88A',
-  primaryMuted: '#123D30',
-  ai: '#8B7FF0',
-  aiMuted: '#252038',
+const DARK_BASE = {
   background: '#0C0E12',
   card: '#161B26',
   text: '#F3F4F6',
@@ -61,14 +56,44 @@ export const darkColors: AppColors = {
   border: '#2D3548',
   danger: '#F87171',
   dangerMuted: '#3F2426',
-  success: '#2EB88A',
   warning: '#FBBF24',
   overlay: 'rgba(0,0,0,0.65)',
   inputBg: '#1F2636',
-  aiBorder: '#3D3558',
   chipMuted: '#252B38',
   badgeScrim: 'rgba(0,0,0,0.72)',
-};
+} as const;
+
+export function createLightColors(accentHex: AccentHex): AppColors {
+  const p = ACCENT_PRIMARY_BY_HEX[accentHex];
+  return {
+    ...LIGHT_BASE,
+    primary: p.primary,
+    primaryMuted: p.primaryMutedLight,
+    success: p.primary,
+    ai: AppAccentAI.ai,
+    aiMuted: AppAccentAI.aiMutedLight,
+    aiBorder: AppAccentAI.aiBorderLight,
+  };
+}
+
+export function createDarkColors(accentHex: AccentHex): AppColors {
+  const p = ACCENT_PRIMARY_BY_HEX[accentHex];
+  return {
+    ...DARK_BASE,
+    primary: p.primaryOnDark,
+    primaryMuted: p.primaryMutedDark,
+    success: p.primaryOnDark,
+    ai: AppAccentAI.aiOnDark,
+    aiMuted: AppAccentAI.aiMutedDark,
+    aiBorder: AppAccentAI.aiBorderDark,
+  };
+}
+
+/** Default light palette (static imports, legacy `Colors.ts`) */
+export const lightColors: AppColors = createLightColors(DEFAULT_ACCENT_HEX);
+
+/** Default dark palette */
+export const darkColors: AppColors = createDarkColors(DEFAULT_ACCENT_HEX);
 
 /** @deprecated use useAppTheme().colors */
 export const Theme = lightColors;
@@ -87,3 +112,12 @@ export const Radius = {
   lg: 16,
   full: 999,
 } as const;
+
+/** Registered in `app/_layout.tsx` via expo-font. */
+export const FontFamily = {
+  bebasNeue: 'BebasNeue',
+  /** Static Black (900) for maximum weight in RN. */
+  nunitoSans: 'NunitoSans_900Black',
+} as const;
+
+export { AppAccent, DEFAULT_ACCENT_HEX, type AccentHex } from './AppAccent';

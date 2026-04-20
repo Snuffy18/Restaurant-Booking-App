@@ -1,7 +1,7 @@
 import React from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Image } from 'expo-image';
-import { Tabs } from 'expo-router';
+import { router, Tabs } from 'expo-router';
 import { StyleSheet } from 'react-native';
 
 import { useAppTheme } from '@/contexts/AppThemeContext';
@@ -53,10 +53,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="ai-chat"
+        name="ai"
         options={{
           title: 'AI chat',
           tabBarIcon: ({ color }) => <AiTabBarIcon color={color} />,
+        }}
+        listeners={{
+          tabPress: (e) => {
+            e.preventDefault();
+            router.push('/ai-chat');
+          },
         }}
       />
       <Tabs.Screen

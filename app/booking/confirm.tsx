@@ -110,6 +110,9 @@ export default function BookingConfirmScreen() {
     ref?: string;
     restaurantId?: string;
     tableName?: string;
+    date?: string;
+    time?: string;
+    guests?: string;
   }>();
 
   const booking = useMemo(() => {
@@ -125,9 +128,9 @@ export default function BookingConfirmScreen() {
   const tableName = params.tableName ?? booking?.tableName ?? 'Table';
   const restaurantName = restaurant?.name ?? booking?.restaurantName ?? 'Restaurant';
   const address = restaurant?.address ?? booking?.address ?? '';
-  const date = booking?.date ?? 'Fri 23 May';
-  const time = booking?.time ?? '19:30';
-  const guests = booking?.guests ?? 2;
+  const date = params.date ?? booking?.date ?? 'Fri 23 May';
+  const time = params.time ?? booking?.time ?? '19:30';
+  const guests = params.guests ? Number(params.guests) : booking?.guests ?? 2;
   const special = booking?.specialRequests;
 
   const qrPayload = JSON.stringify({ ref, restaurant: restaurantName, table: tableName });

@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { AppColors } from '@/constants/Theme';
 import { Radius, Spacing } from '@/constants/Theme';
+import { TabScreenFade } from '@/components/TabScreenFade';
 import { useAppTheme } from '@/contexts/AppThemeContext';
 import { MOCK_BOOKINGS, Booking } from '@/data/mockData';
 
@@ -197,21 +198,23 @@ export default function BookingsScreen() {
   const past = MOCK_BOOKINGS.filter((b) => b.status !== 'upcoming');
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <Text style={styles.title}>My bookings</Text>
-      <View style={styles.tabs}>
-        <Pressable onPress={() => setTab('upcoming')} style={[styles.tab, tab === 'upcoming' && styles.tabOn]}>
-          <Text style={[styles.tabText, tab === 'upcoming' && styles.tabTextOn]}>Upcoming</Text>
-        </Pressable>
-        <Pressable onPress={() => setTab('past')} style={[styles.tab, tab === 'past' && styles.tabOn]}>
-          <Text style={[styles.tabText, tab === 'past' && styles.tabTextOn]}>Past</Text>
-        </Pressable>
-      </View>
-      <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-        {tab === 'upcoming'
-          ? upcoming.map((b) => <UpcomingCard key={b.id} booking={b} styles={styles} />)
-          : past.map((b) => <PastCard key={b.id} booking={b} styles={styles} />)}
-      </ScrollView>
-    </SafeAreaView>
+    <TabScreenFade>
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <Text style={styles.title}>My bookings</Text>
+        <View style={styles.tabs}>
+          <Pressable onPress={() => setTab('upcoming')} style={[styles.tab, tab === 'upcoming' && styles.tabOn]}>
+            <Text style={[styles.tabText, tab === 'upcoming' && styles.tabTextOn]}>Upcoming</Text>
+          </Pressable>
+          <Pressable onPress={() => setTab('past')} style={[styles.tab, tab === 'past' && styles.tabOn]}>
+            <Text style={[styles.tabText, tab === 'past' && styles.tabTextOn]}>Past</Text>
+          </Pressable>
+        </View>
+        <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+          {tab === 'upcoming'
+            ? upcoming.map((b) => <UpcomingCard key={b.id} booking={b} styles={styles} />)
+            : past.map((b) => <PastCard key={b.id} booking={b} styles={styles} />)}
+        </ScrollView>
+      </SafeAreaView>
+    </TabScreenFade>
   );
 }

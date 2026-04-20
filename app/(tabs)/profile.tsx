@@ -5,11 +5,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
+import { ACCENT_HEX_OPTIONS, ACCENT_PRIMARY_BY_HEX } from '@/constants/AppAccent';
+import type { AccentHex } from '@/constants/AppAccent';
 import type { AppColors } from '@/constants/Theme';
 import { Radius, Spacing } from '@/constants/Theme';
 import type { ThemePreference } from '@/contexts/AppThemeContext';
 import { useAppTheme } from '@/contexts/AppThemeContext';
 import { MOCK_USER } from '@/data/mockData';
+import { TabScreenFade } from '@/components/TabScreenFade';
 import { setOnboardingComplete } from '@/lib/onboardingStorage';
 
 function createStyles(c: AppColors) {
@@ -80,6 +83,37 @@ function createStyles(c: AppColors) {
     appearancePillOn: { borderColor: c.primary, backgroundColor: c.primaryMuted },
     appearanceLabel: { fontWeight: '700', fontSize: 13, color: c.textSecondary },
     appearanceLabelOn: { color: c.primary },
+    accentSubLabel: {
+      paddingHorizontal: Spacing.md,
+      paddingTop: Spacing.sm,
+      paddingBottom: 6,
+      fontWeight: '700',
+      fontSize: 12,
+      color: c.textSecondary,
+      letterSpacing: 0.3,
+    },
+    accentSwatchRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.md,
+      paddingHorizontal: Spacing.md,
+      paddingBottom: Spacing.md,
+    },
+    accentSwatchOuter: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      padding: 3,
+      borderWidth: 2,
+      borderColor: 'transparent',
+    },
+    accentSwatchOuterOn: {
+      borderColor: c.primary,
+    },
+    accentSwatchInner: {
+      flex: 1,
+      borderRadius: 21,
+    },
   });
 }
 
@@ -139,12 +173,13 @@ const APPEARANCE_OPTIONS: { key: ThemePreference; label: string }[] = [
 ];
 
 export default function ProfileScreen() {
-  const { colors, preference, setPreference } = useAppTheme();
+  const { colors, preference, setPreference, accentHex, setAccentHex } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+    <TabScreenFade>
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{MOCK_USER.firstName.slice(0, 1)}</Text>
@@ -172,6 +207,24 @@ export default function ProfileScreen() {
                 <Text style={[styles.appearanceLabel, preference === key && styles.appearanceLabelOn]}>{label}</Text>
               </Pressable>
             ))}
+          </View>
+          <Text style={styles.accentSubLabel}>Accent color</Text>
+          <View style={styles.accentSwatchRow}>
+            {ACCENT_HEX_OPTIONS.map((hex) => {
+              const on = accentHex === hex;
+              const fill = ACCENT_PRIMARY_BY_HEX[hex as AccentHex].primary;
+              return (
+                <Pressable
+                  key={hex}
+                  accessibilityLabel={`Accent ${hex}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
+                  onPress={() => setAccentHex(hex)}
+                  style={[styles.accentSwatchOuter, on && styles.accentSwatchOuterOn]}>
+                  <View style={[styles.accentSwatchInner, { backgroundColor: fill }]} />
+                </Pressable>
+              );
+            })}
           </View>
         </Section>
 
@@ -206,8 +259,9 @@ export default function ProfileScreen() {
           </Pressable>
         </Section>
 
-        <Text style={styles.hint}>Sign out clears the demo onboarding flag so you can replay the welcome flow.</Text>
-      </ScrollView>
-    </SafeAreaView>
+          <Text style={styles.hint}>Sign out clears the demo onboarding flag so you can replay the welcome flow.</Text>
+        </ScrollView>
+      </SafeAreaView>
+    </TabScreenFade>
   );
 }
