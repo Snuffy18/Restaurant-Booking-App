@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useRef, useEffect, useCallback, useState } from 'react'
-import { Stage, Layer, Rect, Circle, Line, Text, Group, Transformer } from 'react-konva'
+import { Stage, Layer, Rect, Circle, Arc, Line, Text, Group, Transformer } from 'react-konva'
 import type Konva from 'konva'
 import { useBuilderStore } from '@/lib/store/builderStore'
 import type { FloorElement, ElementType, Guide } from '@/types/floorplan'
@@ -28,6 +28,8 @@ function getDefaultColor(type: ElementType): string {
     case 'bar': return '#c4b5fd'
     case 'plant': return '#6ee7b7'
     case 'couch': return '#fcd34d'
+    case 'door': return '#d1fae5'
+    case 'window': return '#bfdbfe'
     default: return '#e5e7eb'
   }
 }
@@ -46,6 +48,7 @@ const DEFAULT_SIZES: Record<ElementType, { width: number; height: number }> = {
   'table-square': { width: 60, height: 60 }, 'wall': { width: 120, height: 12 },
   'zone': { width: 160, height: 120 }, 'bar': { width: 120, height: 40 },
   'plant': { width: 30, height: 30 }, 'couch': { width: 100, height: 40 },
+  'door': { width: 60, height: 60 }, 'window': { width: 80, height: 12 },
 }
 
 // ── Chair previews ─────────────────────────────────────────────────────────────
@@ -152,6 +155,36 @@ function ElementShape({ element, isSelected, onSelect, onDragStart, onDragMove, 
         <>
           <Rect width={element.width} height={element.height} fill={fill} opacity={0.25} stroke={strokeColor} strokeWidth={strokeWidth} dash={[6,3]} cornerRadius={6} />
           {element.label && <Text x={4} y={element.height/2-6} width={element.width-8} text={element.label} {...labelProps} fill="#1d4ed8" />}
+        </>
+      ) : element.type === 'door' ? (
+        <>
+          {/* Hit area so the door is clickable/draggable */}
+          <Rect width={element.width} height={element.height} fill="transparent" strokeWidth={0} />
+          {/* Hinge pin */}
+          <Circle x={0} y={0} radius={2.5} fill={strokeColor} />
+          {/* Door panel */}
+          <Line points={[0, 0, element.width, 0]} stroke={strokeColor} strokeWidth={3} lineCap="round" />
+          {/* Swing arc: quarter-circle, centre at hinge (0,0), radius=width, sweeping 90° CW */}
+          <Arc
+            x={0} y={0}
+            innerRadius={element.width - 1.5} outerRadius={element.width}
+            angle={90} rotation={0}
+            fill={fill} stroke={strokeColor} strokeWidth={strokeWidth}
+          />
+          {/* Wall opening markers */}
+          <Line points={[-4, 0, 4, 0]} stroke={strokeColor} strokeWidth={1.5} />
+          <Line points={[0, element.width - 4, 0, element.width + 4]} stroke={strokeColor} strokeWidth={1.5} />
+        </>
+      ) : element.type === 'window' ? (
+        <>
+          {/* Frame */}
+          <Rect width={element.width} height={element.height} fill={fill} stroke={strokeColor} strokeWidth={strokeWidth} cornerRadius={1} />
+          {/* Sill line (outer) */}
+          <Line points={[0, element.height * 0.18, element.width, element.height * 0.18]} stroke={strokeColor} strokeWidth={0.75} listening={false} />
+          {/* Sill line (inner) */}
+          <Line points={[0, element.height * 0.82, element.width, element.height * 0.82]} stroke={strokeColor} strokeWidth={0.75} listening={false} />
+          {/* Centre glazing bar */}
+          <Line points={[element.width / 2, 0, element.width / 2, element.height]} stroke={strokeColor} strokeWidth={0.75} opacity={0.5} listening={false} />
         </>
       ) : (
         <>
@@ -577,6 +610,8 @@ export default function CanvasInner({ width, height }: { width: number; height: 
               onDragMove={handleElementDragMove} onDragEnd={handleElementDragEnd} onTransformEnd={handleTransformEnd} />
           ))}
           <Transformer ref={trRef} rotateEnabled
+            rotationSnaps={[0, 45, 90, 135, 180, 225, 270, 315]}
+            rotationSnapTolerance={8}
             boundBoxFunc={(o, n) => (n.width < 20 || n.height < 20 ? o : n)}
             anchorStyleFunc={(a) => { if (a.hasName('rotater')) { a.fill('#3b82f6'); a.stroke('#2563eb') } }} />
           {selectionRect && (

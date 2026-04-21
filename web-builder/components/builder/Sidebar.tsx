@@ -95,11 +95,37 @@ const PALETTE: PaletteItem[] = [
       </svg>
     ),
   },
+  {
+    type: 'door',
+    label: 'Door',
+    color: '#d1fae5',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+        {/* Hinge at top-left, door panel horizontal, arc sweeping down */}
+        <line x1="4" y1="4" x2="4" y2="20" strokeWidth="2.5" />
+        <line x1="4" y1="4" x2="16" y2="4" strokeWidth="2" />
+        <path d="M16 4 A12 12 0 0 1 4 16" strokeWidth="1.5" strokeDasharray="3 2" />
+      </svg>
+    ),
+  },
+  {
+    type: 'window',
+    label: 'Window',
+    color: '#bfdbfe',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+        <rect x="3" y="9" width="18" height="6" rx="1" />
+        <line x1="3" y1="11" x2="21" y2="11" strokeWidth="1" />
+        <line x1="3" y1="13" x2="21" y2="13" strokeWidth="1" />
+        <line x1="12" y1="9" x2="12" y2="15" strokeWidth="1" />
+      </svg>
+    ),
+  },
 ]
 
 const SECTIONS = [
   { label: 'Tables', types: ['table-round', 'table-rect', 'table-square'] },
-  { label: 'Structure', types: ['wall', 'zone'] },
+  { label: 'Structure', types: ['wall', 'zone', 'door', 'window'] },
   { label: 'Decor', types: ['bar', 'plant', 'couch'] },
 ]
 
