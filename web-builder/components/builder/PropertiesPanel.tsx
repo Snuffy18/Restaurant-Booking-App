@@ -11,6 +11,8 @@ const TYPE_LABELS: Record<string, string> = {
   'bar': 'Bar',
   'plant': 'Plant',
   'couch': 'Couch',
+  'door': 'Door',
+  'window': 'Window',
 }
 
 const ZONE_PRESETS = ['Indoor', 'Outdoor', 'Terrace', 'VIP', 'Bar area', 'Private dining']

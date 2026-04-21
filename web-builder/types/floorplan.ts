@@ -7,6 +7,8 @@ export type ElementType =
   | 'bar'
   | 'plant'
   | 'couch'
+  | 'door'
+  | 'window'
 
 export interface FloorElement {
   id: string
