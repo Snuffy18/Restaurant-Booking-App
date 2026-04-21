@@ -1,6 +1,9 @@
+'use server'
+
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import CreateRestaurantForm from './CreateRestaurantForm'
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -12,6 +15,29 @@ export default async function AdminPage() {
     .from('restaurants')
     .select('id, name, owner_id, created_at')
     .order('created_at', { ascending: false })
+
+  // Fetch users so we can show owner emails and let admin assign owners
+  const { data: { users } } = await supabase.auth.admin.listUsers()
+
+  const userMap: Record<string, string> = {}
+  for (const u of users ?? []) userMap[u.id] = u.email ?? u.id
+
+  async function createRestaurant(formData: FormData) {
+    'use server'
+    const name = (formData.get('name') as string)?.trim()
+    const ownerId = (formData.get('owner_id') as string)?.trim()
+    if (!name) return
+
+    const supabase = await createClient()
+    const { data: newR } = await supabase
+      .from('restaurants')
+      .insert({ name, owner_id: ownerId || null })
+      .select('id')
+      .single()
+
+    if (newR?.id) redirect(`/builder/${newR.id}`)
+    else redirect('/admin')
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -36,8 +62,12 @@ export default async function AdminPage() {
           <span className="text-sm text-gray-500">{restaurants?.length ?? 0} total</span>
         </div>
 
+        {/* Create form */}
+        <CreateRestaurantForm users={users ?? []} action={createRestaurant} />
+
+        {/* Restaurant list */}
         {restaurants && restaurants.length > 0 ? (
-          <div className="grid gap-3">
+          <div className="grid gap-3 mt-6">
             {restaurants.map((r) => (
               <Link
                 key={r.id}
@@ -47,6 +77,9 @@ export default async function AdminPage() {
                 <div>
                   <p className="font-medium text-gray-900 group-hover:text-gray-700">{r.name}</p>
                   <p className="text-xs text-gray-400 mt-0.5">
+                    {userMap[r.owner_id] && (
+                      <span className="mr-2">{userMap[r.owner_id]}</span>
+                    )}
                     {new Date(r.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                   </p>
                 </div>
@@ -58,7 +91,7 @@ export default async function AdminPage() {
           </div>
         ) : (
           <div className="text-center py-16 text-gray-400">
-            <p className="text-sm">No restaurants yet</p>
+            <p className="text-sm">No restaurants yet — create one above.</p>
           </div>
         )}
       </main>
