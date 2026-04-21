@@ -1,10 +1,13 @@
 import * as Calendar from 'expo-calendar';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import LottieView from 'lottie-react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
+import { useFocusEffect } from '@react-navigation/native';
 
+import { BookingSuccessCard } from '@/components/BookingSuccessCard';
 import type { AppColors } from '@/constants/Theme';
 import { Radius, Spacing } from '@/constants/Theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
@@ -97,26 +100,20 @@ async function getCalendarIdForEvents(): Promise<string> {
 function createStyles(c: AppColors) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: c.background },
+    confettiWrap: {
+      position: 'absolute',
+      top: -40,
+      left: 0,
+      right: 0,
+      height: 210,
+      zIndex: 2,
+      pointerEvents: 'none',
+    },
+    confetti: {
+      width: '100%',
+      height: '100%',
+    },
     scroll: { padding: Spacing.md, paddingBottom: Spacing.xl },
-    header: {
-      backgroundColor: c.primary,
-      borderRadius: Radius.lg,
-      padding: Spacing.lg,
-      alignItems: 'center',
-      marginBottom: Spacing.lg,
-    },
-    check: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: 'rgba(255,255,255,0.2)',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: Spacing.md,
-    },
-    checkMark: { color: '#fff', fontSize: 28, fontWeight: '900' },
-    headerTitle: { color: '#fff', fontSize: 24, fontWeight: '900', marginBottom: 6 },
-    headerSub: { color: 'rgba(255,255,255,0.9)', textAlign: 'center', lineHeight: 20 },
     ticket: {
       backgroundColor: c.card,
       borderRadius: Radius.lg,
@@ -198,9 +195,23 @@ export default function BookingConfirmScreen() {
     date?: string;
     time?: string;
     guests?: string;
+    fromReview?: string;
   }>();
+  const isFromReview = params.fromReview === '1';
 
   const [booking, setBooking] = useState<Booking | undefined>(undefined);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isFromReview) {
+        return undefined;
+      }
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => true);
+      return () => {
+        subscription.remove();
+      };
+    }, [isFromReview]),
+  );
 
   useEffect(() => {
     let active = true;
@@ -226,6 +237,7 @@ export default function BookingConfirmScreen() {
   const time = params.time ?? booking?.time ?? '19:30';
   const guests = params.guests ? Number(params.guests) : booking?.guests ?? 2;
   const special = booking?.specialRequests;
+  const shouldShowConfetti = isFromReview;
 
   const qrPayload = JSON.stringify({ ref, restaurant: restaurantName, table: tableName });
 
@@ -255,16 +267,20 @@ export default function BookingConfirmScreen() {
     }
   };
 
+  const goToBookings = () => {
+    router.dismissAll();
+    router.replace('/(tabs)/bookings');
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View style={styles.check}>
-            <Text style={styles.checkMark}>✓</Text>
-          </View>
-          <Text style={styles.headerTitle}>You’re booked</Text>
-          <Text style={styles.headerSub}>Show this QR at the host stand — we’ll seat you right away.</Text>
+      {shouldShowConfetti ? (
+        <View style={styles.confettiWrap} pointerEvents="none">
+          <LottieView source={require('@/assets/images/Confetti.json')} autoPlay loop={false} style={styles.confetti} />
         </View>
+      ) : null}
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <BookingSuccessCard colors={colors} />
 
         <View style={styles.ticket}>
           <View style={styles.ticketInner}>
@@ -321,7 +337,7 @@ export default function BookingConfirmScreen() {
           </Pressable>
         </View>
 
-        <Pressable onPress={() => router.replace('/(tabs)/bookings')} style={styles.done}>
+        <Pressable onPress={goToBookings} style={styles.done}>
           <Text style={styles.doneText}>View my bookings</Text>
         </Pressable>
       </ScrollView>

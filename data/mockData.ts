@@ -58,7 +58,7 @@ export const MOCK_USER = {
 
 export const RESTAURANTS: Restaurant[] = [
   {
-    id: '1',
+    id: '3d4e90dc-c02b-40c0-88d9-6cb806b5055f',
     name: 'Trattoria Mimo',
     image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80',
     rating: 4.8,
