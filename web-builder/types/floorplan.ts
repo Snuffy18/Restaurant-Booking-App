@@ -21,6 +21,13 @@ export interface FloorElement {
   zone?: string
   tags?: string[]
   color?: string
+  locked?: boolean
+}
+
+export interface Guide {
+  id: string
+  axis: 'h' | 'v'
+  position: number
 }
 
 export interface Floor {

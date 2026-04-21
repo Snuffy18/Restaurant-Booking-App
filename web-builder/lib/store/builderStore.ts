@@ -1,13 +1,16 @@
 'use client'
 
 import { create } from 'zustand'
-import { FloorElement, Floor, SaveStatus } from '@/types/floorplan'
+import { FloorElement, Floor, Guide, SaveStatus } from '@/types/floorplan'
 
 const MAX_HISTORY = 50
 
 interface BuilderState {
   elements: FloorElement[]
   selectedIds: string[]
+  clipboard: FloorElement[]
+  guides: Guide[]
+  showGuides: boolean
   snapToGrid: boolean
   gridSize: number
   scale: number
@@ -27,6 +30,12 @@ interface BuilderState {
   deleteSelected: () => void
   selectElement: (id: string | null) => void
   selectElements: (ids: string[]) => void
+  copy: () => void
+  paste: () => void
+  addGuide: (id: string, axis: 'h' | 'v', position: number) => void
+  updateGuide: (id: string, position: number) => void
+  deleteGuide: (id: string) => void
+  toggleGuides: () => void
   toggleSnap: () => void
   setScale: (scale: number) => void
   setStagePos: (pos: { x: number; y: number }) => void
@@ -42,6 +51,9 @@ interface BuilderState {
 export const useBuilderStore = create<BuilderState>((set, get) => ({
   elements: [],
   selectedIds: [],
+  clipboard: [],
+  guides: [],
+  showGuides: true,
   snapToGrid: true,
   gridSize: 20,
   scale: 1,
@@ -55,8 +67,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
   pushHistory: () => {
     const { elements, past } = get()
-    const snapshot = elements.map((el) => ({ ...el }))
-    set({ past: [...past, snapshot].slice(-MAX_HISTORY), future: [] })
+    set({ past: [...past, elements.map(el => ({ ...el }))].slice(-MAX_HISTORY), future: [] })
   },
 
   setElements: (elements) => set({ elements }),
@@ -68,50 +79,63 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
   updateElement: (id, updates) => {
     get().pushHistory()
-    set((state) => ({
-      elements: state.elements.map((el) => el.id === id ? { ...el, ...updates } : el),
-    }))
+    set((state) => ({ elements: state.elements.map(el => el.id === id ? { ...el, ...updates } : el) }))
   },
 
   updateElements: (updates) => {
-    if (updates.length === 0) return
+    if (!updates.length) return
     get().pushHistory()
-    const map = new Map(updates.map((u) => [u.id, u.updates]))
-    set((state) => ({
-      elements: state.elements.map((el) => {
-        const u = map.get(el.id)
-        return u ? { ...el, ...u } : el
-      }),
-    }))
+    const map = new Map(updates.map(u => [u.id, u.updates]))
+    set((state) => ({ elements: state.elements.map(el => { const u = map.get(el.id); return u ? { ...el, ...u } : el }) }))
   },
 
   deleteElement: (id) => {
     get().pushHistory()
     set((state) => ({
-      elements: state.elements.filter((el) => el.id !== id),
-      selectedIds: state.selectedIds.filter((sid) => sid !== id),
+      elements: state.elements.filter(el => el.id !== id),
+      selectedIds: state.selectedIds.filter(s => s !== id),
     }))
   },
 
   deleteSelected: () => {
     const { selectedIds } = get()
-    if (selectedIds.length === 0) return
+    if (!selectedIds.length) return
     get().pushHistory()
-    const toDelete = new Set(selectedIds)
+    const del = new Set(selectedIds)
     set((state) => ({
-      elements: state.elements.filter((el) => !toDelete.has(el.id)),
+      elements: state.elements.filter(el => !del.has(el.id) || el.locked),
       selectedIds: [],
     }))
   },
 
   selectElement: (id) => set({ selectedIds: id ? [id] : [] }),
-
   selectElements: (ids) => set({ selectedIds: ids }),
 
-  toggleSnap: () => set((state) => ({ snapToGrid: !state.snapToGrid })),
+  copy: () => {
+    const { selectedIds, elements } = get()
+    const copied = elements.filter(el => selectedIds.includes(el.id))
+    if (copied.length) set({ clipboard: copied })
+  },
 
+  paste: () => {
+    const { clipboard } = get()
+    if (!clipboard.length) return
+    get().pushHistory()
+    const newEls = clipboard.map(el => ({ ...el, id: crypto.randomUUID(), x: el.x + 20, y: el.y + 20 }))
+    set(s => ({
+      elements: [...s.elements, ...newEls],
+      selectedIds: newEls.map(el => el.id),
+      clipboard: newEls, // offset on repeated paste
+    }))
+  },
+
+  addGuide: (id, axis, position) => set(s => ({ guides: [...s.guides, { id, axis, position }] })),
+  updateGuide: (id, position) => set(s => ({ guides: s.guides.map(g => g.id === id ? { ...g, position } : g) })),
+  deleteGuide: (id) => set(s => ({ guides: s.guides.filter(g => g.id !== id) })),
+  toggleGuides: () => set(s => ({ showGuides: !s.showGuides })),
+
+  toggleSnap: () => set(state => ({ snapToGrid: !state.snapToGrid })),
   setScale: (scale) => set({ scale }),
-
   setStagePos: (stagePos) => set({ stagePos }),
 
   toggleDark: () => {
@@ -122,31 +146,27 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
   undo: () => {
     const { past, elements, future } = get()
-    if (past.length === 0) return
-    const previous = past[past.length - 1]
+    if (!past.length) return
     set({
-      elements: previous,
+      elements: past[past.length - 1],
       past: past.slice(0, -1),
-      future: [elements.map((el) => ({ ...el })), ...future].slice(0, MAX_HISTORY),
+      future: [elements.map(el => ({ ...el })), ...future].slice(0, MAX_HISTORY),
       selectedIds: [],
     })
   },
 
   redo: () => {
     const { past, elements, future } = get()
-    if (future.length === 0) return
-    const next = future[0]
+    if (!future.length) return
     set({
-      elements: next,
-      past: [...past, elements.map((el) => ({ ...el }))].slice(-MAX_HISTORY),
+      elements: future[0],
+      past: [...past, elements.map(el => ({ ...el }))].slice(-MAX_HISTORY),
       future: future.slice(1),
       selectedIds: [],
     })
   },
 
   setSaveStatus: (saveStatus) => set({ saveStatus }),
-
   setCurrentFloor: (floorId) => set({ currentFloorId: floorId }),
-
   setFloors: (floors) => set({ floors }),
 }))
