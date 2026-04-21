@@ -24,6 +24,7 @@ export default function BuilderClient({ restaurant, initialFloors, isAdmin }: Pr
     currentFloorId,
     floors,
     saveStatus,
+    resetCanvas,
     setFloors,
     setCurrentFloor,
     setElements,
@@ -32,12 +33,15 @@ export default function BuilderClient({ restaurant, initialFloors, isAdmin }: Pr
   } = useBuilderStore()
 
   useEffect(() => {
+    // Clear all stale state from any previously loaded restaurant
+    resetCanvas()
     if (initialFloors.length > 0) {
       setFloors(initialFloors)
       setCurrentFloor(initialFloors[0].id)
       setElements(initialFloors[0].elements ?? [])
     }
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurant.id])
 
   const saveFloor = useCallback(async (floorId: string, els: typeof elements) => {
     setSaveStatus('saving')
