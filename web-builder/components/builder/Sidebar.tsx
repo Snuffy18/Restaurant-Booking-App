@@ -1,6 +1,7 @@
 'use client'
 
 import type { ElementType } from '@/types/floorplan'
+import { useBuilderStore } from '@/lib/store/builderStore'
 
 interface PaletteItem {
   type: ElementType
@@ -112,7 +113,7 @@ function PaletteItemCard({ item }: { item: PaletteItem }) {
     <div
       draggable
       onDragStart={handleDragStart}
-      className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm cursor-grab active:cursor-grabbing transition-all select-none"
+      className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm cursor-grab active:cursor-grabbing transition-all select-none"
       title={`Drag to place ${item.label}`}
     >
       <div
@@ -121,7 +122,53 @@ function PaletteItemCard({ item }: { item: PaletteItem }) {
       >
         {item.icon}
       </div>
-      <span className="text-xs text-gray-600 text-center leading-tight">{item.label}</span>
+      <span className="text-xs text-gray-600 dark:text-gray-300 text-center leading-tight">{item.label}</span>
+    </div>
+  )
+}
+
+function CapacitySummary() {
+  const elements = useBuilderStore((s) => s.elements)
+  const tables = elements.filter((el) => el.type.startsWith('table'))
+  if (tables.length === 0) return null
+
+  const totalSeats = tables.reduce((sum, t) => sum + (t.capacity ?? 0), 0)
+
+  const byZone: Record<string, number> = {}
+  for (const t of tables) {
+    const zone = t.zone?.trim() || 'Unassigned'
+    byZone[zone] = (byZone[zone] ?? 0) + (t.capacity ?? 0)
+  }
+  const zoneEntries = Object.entries(byZone)
+
+  return (
+    <div className="p-3 border-t border-gray-100 dark:border-gray-700">
+      <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2.5">
+        Capacity
+      </p>
+      <div className="flex items-center gap-4 mb-2.5">
+        <div>
+          <p className="text-xl font-bold text-gray-800 dark:text-gray-100 leading-none tabular-nums">{tables.length}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">tables</p>
+        </div>
+        <div className="w-px h-8 bg-gray-200 dark:bg-gray-700" />
+        <div>
+          <p className="text-xl font-bold text-gray-800 dark:text-gray-100 leading-none tabular-nums">{totalSeats}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">seats</p>
+        </div>
+      </div>
+      {zoneEntries.length > 1 && (
+        <div className="space-y-1">
+          {zoneEntries.map(([zone, seats]) => (
+            <div key={zone} className="flex items-center justify-between">
+              <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{zone}</span>
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 ml-2 tabular-nums">
+                {seats}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -130,14 +177,14 @@ export default function Sidebar() {
   const byType = Object.fromEntries(PALETTE.map((p) => [p.type, p]))
 
   return (
-    <aside className="w-52 shrink-0 bg-white border-r border-gray-200 overflow-y-auto flex flex-col">
-      <div className="p-3 border-b border-gray-100">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Elements</p>
+    <aside className="w-52 shrink-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 overflow-y-auto flex flex-col">
+      <div className="p-3 border-b border-gray-100 dark:border-gray-700">
+        <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Elements</p>
       </div>
       <div className="p-3 space-y-4 flex-1">
         {SECTIONS.map((section) => (
           <div key={section.label}>
-            <p className="text-xs font-medium text-gray-400 mb-2">{section.label}</p>
+            <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-2">{section.label}</p>
             <div className="grid grid-cols-2 gap-2">
               {section.types.map((type) => {
                 const item = byType[type]
@@ -147,9 +194,11 @@ export default function Sidebar() {
           </div>
         ))}
       </div>
-      <div className="p-3 border-t border-gray-100">
-        <p className="text-xs text-gray-400 text-center">Drag items onto canvas</p>
-        <p className="text-xs text-gray-300 text-center mt-0.5">Space + drag to pan · scroll to zoom</p>
+      <CapacitySummary />
+      <div className="p-3 border-t border-gray-100 dark:border-gray-700">
+        <p className="text-xs text-gray-400 dark:text-gray-500 text-center">Drag items onto canvas</p>
+        <p className="text-xs text-gray-300 dark:text-gray-600 text-center mt-0.5">Space + drag to pan · scroll to zoom</p>
+        <p className="text-xs text-gray-300 dark:text-gray-600 text-center mt-0.5">Shift+click or drag to multi-select</p>
       </div>
     </aside>
   )

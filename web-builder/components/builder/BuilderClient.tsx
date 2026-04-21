@@ -28,7 +28,7 @@ export default function BuilderClient({ restaurant, initialFloors, isAdmin }: Pr
     setCurrentFloor,
     setElements,
     setSaveStatus,
-    selectedId,
+    selectedIds,
   } = useBuilderStore()
 
   useEffect(() => {
@@ -109,7 +109,7 @@ export default function BuilderClient({ restaurant, initialFloors, isAdmin }: Pr
   }, [currentFloorId, elements, saveFloor])
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-gray-50">
+    <div className="flex flex-col h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
       <Toolbar
         restaurantName={restaurant.name}
         floors={floors}
@@ -127,7 +127,7 @@ export default function BuilderClient({ restaurant, initialFloors, isAdmin }: Pr
 
         <Canvas />
 
-        {selectedId && <PropertiesPanel />}
+        {selectedIds.length === 1 && <PropertiesPanel />}
       </div>
     </div>
   )
