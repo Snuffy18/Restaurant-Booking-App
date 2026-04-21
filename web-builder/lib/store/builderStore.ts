@@ -22,6 +22,7 @@ interface BuilderState {
   floors: Floor[]
   isDark: boolean
 
+  resetCanvas: () => void
   setElements: (elements: FloorElement[]) => void
   addElement: (element: FloorElement) => void
   updateElement: (id: string, updates: Partial<FloorElement>) => void
@@ -69,6 +70,12 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     const { elements, past } = get()
     set({ past: [...past, elements.map(el => ({ ...el }))].slice(-MAX_HISTORY), future: [] })
   },
+
+  resetCanvas: () => set({
+    elements: [], selectedIds: [], clipboard: [], guides: [],
+    past: [], future: [], saveStatus: 'idle',
+    currentFloorId: null, floors: [],
+  }),
 
   setElements: (elements) => set({ elements }),
 

@@ -34,6 +34,7 @@ export default async function BuilderPage({ params }: Props) {
 
   return (
     <BuilderClient
+      key={restaurantId}
       restaurant={restaurant as Restaurant}
       initialFloors={(floors ?? []) as Floor[]}
       isAdmin={isAdmin}
