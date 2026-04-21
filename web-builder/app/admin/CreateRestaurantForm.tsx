@@ -2,15 +2,24 @@
 
 import { useState, useTransition } from 'react'
 import type { User } from '@supabase/supabase-js'
+import { createRestaurant } from './actions'
 
 interface Props {
   users: User[]
-  action: (formData: FormData) => Promise<void>
 }
 
-export default function CreateRestaurantForm({ users, action }: Props) {
+export default function CreateRestaurantForm({ users }: Props) {
   const [open, setOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
+
+  function handleSubmit(formData: FormData) {
+    setError(null)
+    startTransition(async () => {
+      const result = await createRestaurant(formData)
+      if (result?.error) setError(result.error)
+    })
+  }
 
   return (
     <div>
@@ -26,13 +35,21 @@ export default function CreateRestaurantForm({ users, action }: Props) {
         </button>
       ) : (
         <form
-          action={(fd) => { startTransition(() => action(fd)) }}
+          action={handleSubmit}
           className="bg-white border border-gray-200 rounded-xl px-5 py-4 flex flex-col gap-4"
         >
           <p className="text-sm font-semibold text-gray-800">Create new restaurant</p>
 
+          {error && (
+            <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
+
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-gray-500">Restaurant name <span className="text-red-400">*</span></label>
+            <label className="text-xs font-medium text-gray-500">
+              Restaurant name <span className="text-red-400">*</span>
+            </label>
             <input
               name="name"
               type="text"
@@ -70,7 +87,7 @@ export default function CreateRestaurantForm({ users, action }: Props) {
             </button>
             <button
               type="button"
-              onClick={() => setOpen(false)}
+              onClick={() => { setOpen(false); setError(null) }}
               className="text-sm text-gray-500 hover:text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
               Cancel
