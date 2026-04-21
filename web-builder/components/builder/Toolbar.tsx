@@ -52,7 +52,7 @@ export default function Toolbar({
   onSave,
   onDeleteFloor,
 }: Props) {
-  const { snapToGrid, toggleSnap, undo, redo, past, future, scale, setScale, isDark, toggleDark } = useBuilderStore()
+  const { snapToGrid, toggleSnap, undo, redo, past, future, scale, setScale, isDark, toggleDark, showGuides, toggleGuides } = useBuilderStore()
 
   return (
     <header className="h-12 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 flex items-center px-4 gap-4 shrink-0 z-10">
@@ -138,6 +138,21 @@ export default function Toolbar({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
         </svg>
         Grid {snapToGrid ? 'ON' : 'OFF'}
+      </button>
+
+      <button
+        onClick={toggleGuides}
+        className={`flex items-center gap-1.5 text-xs rounded-lg px-2.5 py-1 border transition-colors ${
+          showGuides
+            ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+            : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+        }`}
+        title="Toggle guide lines (drag from rulers to create)"
+      >
+        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12h16M12 4v16" />
+        </svg>
+        Guides
       </button>
 
       <div className="w-px h-5 bg-gray-200 dark:bg-gray-700" />
