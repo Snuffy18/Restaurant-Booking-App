@@ -38,11 +38,21 @@ function RootLayoutNav() {
     <ThemeProvider value={navTheme}>
       <StatusBar style={resolvedScheme === 'dark' ? 'light' : 'dark'} />
       <Stack
-        screenOptions={({ route }) => ({
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.background },
-          ...(route.name === 'ai-chat' ? { animation: 'slide_from_right' as const } : {}),
-        })}
+        screenOptions={({ route }) => {
+          const fromReview = route.params && 'fromReview' in route.params && route.params.fromReview === '1';
+
+          return {
+            headerShown: false,
+            contentStyle: { backgroundColor: colors.background },
+            ...(route.name === 'booking/confirm'
+              ? {
+                  animation: (fromReview ? 'fade' : 'slide_from_right') as const,
+                  gestureEnabled: !fromReview,
+                }
+              : {}),
+            ...(route.name === 'ai-chat' ? { animation: 'slide_from_right' as const } : {}),
+          };
+        }}
       />
     </ThemeProvider>
   );

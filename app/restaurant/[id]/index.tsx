@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { LayoutChangeEvent } from 'react-native';
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated as RNAnimated, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import Animated, {
   Easing,
@@ -23,6 +23,7 @@ import { FontFamily, Radius, Spacing } from '@/constants/Theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
 import { getRestaurant, type Restaurant } from '@/data/mockData';
 import { pushLastVisitedRestaurantId } from '@/lib/lastVisitedRestaurant';
+import { getReservationPreferences, setReservationPreferences } from '@/lib/reservationPreferences';
 
 type ReviewItem = Restaurant['reviews'][number];
 
@@ -285,7 +286,8 @@ function createStyles(c: AppColors) {
     stickyLabel: { fontWeight: '900', color: c.text },
     stickySub: { color: c.textSecondary, marginTop: 2, fontSize: 12 },
     stickySubPressable: { alignSelf: 'flex-start', marginTop: 2 },
-    pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
+    pickerOverlay: { flex: 1, justifyContent: 'flex-end' },
+    pickerBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000' },
     pickerCard: {
       backgroundColor: c.background,
       borderTopLeftRadius: Radius.lg,
@@ -395,7 +397,12 @@ function ReviewCard({ review, styles }: { review: ReviewItem; styles: Restaurant
 export default function RestaurantScreen() {
   const { colors, resolvedScheme } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, date: routeDate, time: routeTime, guests: routeGuests } = useLocalSearchParams<{
+    id: string;
+    date?: string;
+    time?: string;
+    guests?: string;
+  }>();
   const restaurant = useMemo(() => (id ? getRestaurant(String(id)) : undefined), [id]);
   const dateOptions = useMemo(() => buildDateOptions(), []);
   const timeOptions = useMemo(() => buildTimeOptions(), []);
@@ -406,9 +413,12 @@ export default function RestaurantScreen() {
   const [bookingTime, setBookingTime] = useState(timeOptions[0] ?? 'Now');
   const [bookingGuests, setBookingGuests] = useState<(typeof GUEST_OPTIONS)[number]>(2);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerMounted, setPickerMounted] = useState(false);
   const [draftDate, setDraftDate] = useState('Today');
   const [draftTime, setDraftTime] = useState(timeOptions[0] ?? 'Now');
   const [draftGuests, setDraftGuests] = useState<(typeof GUEST_OPTIONS)[number]>(2);
+  const pickerBackdropOpacity = useRef(new RNAnimated.Value(0)).current;
+  const pickerSheetTranslateY = useRef(new RNAnimated.Value(520)).current;
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<Animated.ScrollView>(null);
   /** Y of each section top, relative to the main content block (below hero + shortcuts). */
@@ -538,15 +548,64 @@ export default function RestaurantScreen() {
     indicatorW.value = 0;
     setActiveSection('overview');
     setReviewsExpanded(false);
-    setBookingDate('Today');
-    setBookingTime(timeOptions[0] ?? 'Now');
-    setBookingGuests(2);
-    setDraftDate('Today');
-    setDraftTime(timeOptions[0] ?? 'Now');
-    setDraftGuests(2);
+    let active = true;
+    void (async () => {
+      const saved = await getReservationPreferences();
+      if (!active) return;
+      const defaultTime = timeOptions[0] ?? 'Now';
+      const nextDate = routeDate ? String(routeDate) : saved?.date ?? 'Today';
+      const requestedTime = routeTime ? String(routeTime) : saved?.time ?? defaultTime;
+      const nextTime = timeOptions.includes(requestedTime) ? requestedTime : defaultTime;
+      const routeGuestsParsed = routeGuests != null ? Number(routeGuests) : NaN;
+      const requestedGuests = Number.isFinite(routeGuestsParsed) ? routeGuestsParsed : (saved?.guests ?? 2);
+      const nextGuests = GUEST_OPTIONS.includes(requestedGuests as (typeof GUEST_OPTIONS)[number])
+        ? (requestedGuests as (typeof GUEST_OPTIONS)[number])
+        : 2;
+
+      setBookingDate(nextDate);
+      setBookingTime(nextTime);
+      setBookingGuests(nextGuests);
+      setDraftDate(nextDate);
+      setDraftTime(nextTime);
+      setDraftGuests(nextGuests);
+      void setReservationPreferences({
+        date: nextDate,
+        time: nextTime,
+        guests: nextGuests,
+      });
+    })();
     setPickerOpen(false);
     scrollRef.current?.scrollTo({ y: 0, animated: false });
-  }, [id, timeOptions]);
+    return () => {
+      active = false;
+    };
+  }, [id, routeDate, routeGuests, routeTime, timeOptions]);
+
+  useEffect(() => {
+    if (pickerOpen) {
+      setPickerMounted(true);
+      requestAnimationFrame(() => {
+        RNAnimated.parallel([
+          RNAnimated.timing(pickerBackdropOpacity, { toValue: 0.35, duration: 180, useNativeDriver: true }),
+          RNAnimated.spring(pickerSheetTranslateY, {
+            toValue: 0,
+            damping: 22,
+            stiffness: 230,
+            mass: 0.9,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      });
+      return;
+    }
+    if (!pickerMounted) return;
+    RNAnimated.parallel([
+      RNAnimated.timing(pickerBackdropOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+      RNAnimated.timing(pickerSheetTranslateY, { toValue: 520, duration: 230, useNativeDriver: true }),
+    ]).start(({ finished }) => {
+      if (finished) setPickerMounted(false);
+    });
+  }, [pickerBackdropOpacity, pickerMounted, pickerOpen, pickerSheetTranslateY]);
 
   if (!restaurant) {
     return (
@@ -562,6 +621,12 @@ export default function RestaurantScreen() {
   const open = restaurant.openNow;
 
   const bottomPad = 120 + insets.bottom;
+  const openBookingPicker = () => {
+    setDraftDate(bookingDate);
+    setDraftTime(bookingTime);
+    setDraftGuests(bookingGuests);
+    setPickerOpen(true);
+  };
 
   return (
     <View style={styles.root}>
@@ -788,14 +853,11 @@ export default function RestaurantScreen() {
       <View style={[styles.sticky, { paddingBottom: insets.bottom + Spacing.sm }]}>
         <View style={styles.stickyInner}>
           <View>
-            <Text style={styles.stickyLabel}>{bookingDate} · {bookingTime}</Text>
+            <Pressable onPress={openBookingPicker} accessibilityRole="button" accessibilityLabel="Change booking date and time">
+              <Text style={styles.stickyLabel}>{bookingDate} · {bookingTime}</Text>
+            </Pressable>
             <Pressable
-              onPress={() => {
-                setDraftDate(bookingDate);
-                setDraftTime(bookingTime);
-                setDraftGuests(bookingGuests);
-                setPickerOpen(true);
-              }}
+              onPress={openBookingPicker}
               style={styles.stickySubPressable}
               accessibilityRole="button"
               accessibilityLabel="Change booking time and guests">
@@ -815,9 +877,11 @@ export default function RestaurantScreen() {
         </View>
       </View>
 
-      <Modal visible={pickerOpen} transparent animationType="slide" onRequestClose={() => setPickerOpen(false)}>
+      <Modal visible={pickerMounted} transparent animationType="none" onRequestClose={() => setPickerOpen(false)}>
         <Pressable style={styles.pickerOverlay} onPress={() => setPickerOpen(false)}>
-          <Pressable style={[styles.pickerCard, { paddingBottom: insets.bottom + Spacing.md }]} onPress={() => {}}>
+          <RNAnimated.View pointerEvents="none" style={[styles.pickerBackdrop, { opacity: pickerBackdropOpacity }]} />
+          <RNAnimated.View style={{ transform: [{ translateY: pickerSheetTranslateY }] }}>
+            <Pressable style={[styles.pickerCard, { paddingBottom: insets.bottom + Spacing.md }]} onPress={() => {}}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.guestsScroller} contentContainerStyle={styles.guestsScrollerContent}>
               {GUEST_OPTIONS.map((g) => (
                 <Pressable
@@ -896,12 +960,18 @@ export default function RestaurantScreen() {
                   setBookingDate(draftDate);
                   setBookingTime(draftTime);
                   setBookingGuests(draftGuests);
+                  void setReservationPreferences({
+                    date: draftDate,
+                    time: draftTime,
+                    guests: draftGuests,
+                  });
                   setPickerOpen(false);
                 }}>
                 <Text style={styles.pickerBtnPrimaryText}>Apply</Text>
               </Pressable>
             </View>
-          </Pressable>
+            </Pressable>
+          </RNAnimated.View>
         </Pressable>
       </Modal>
     </View>

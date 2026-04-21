@@ -405,7 +405,7 @@ export default function AiChatScreen() {
                   />
                 </View>
                 <View style={styles.typingBubble}>
-                  <ShimmerText text="Thinking" baseColor="#6B7280" shimmerColor="orange" duration={1100} bounceHeight={7} bounceDuration={900} fontSize={16}/>
+                  <ShimmerText text="Thinking" baseColor="#6B7280" shimmerColor={colors.primary} duration={1100} bounceHeight={7} bounceDuration={900} fontSize={16}/>
                 </View>
               </View>
             ) : isFirstMessage ? (

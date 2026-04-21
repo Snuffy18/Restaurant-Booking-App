@@ -10,10 +10,12 @@ import { Animated as RNAnimated, Modal, Platform, Pressable, ScrollView, StyleSh
 import Animated, { Easing, interpolate, LinearTransition, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BookingSummaryPill } from '@/components/BookingSummaryPill';
 import type { AppColors } from '@/constants/Theme';
 import { Radius, Spacing } from '@/constants/Theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
 import { RESTAURANTS } from '@/data/mockData';
+import { getReservationPreferences, setReservationPreferences } from '@/lib/reservationPreferences';
 
 type FilterId = 'tonight' | 'cuisine' | 'price' | 'guests' | 'outdoor' | 'rating';
 type AvailabilityTone = 'red' | 'orange' | 'green';
@@ -304,6 +306,8 @@ export default function AllRestaurantsScreen() {
   const modalSheetTranslateY = useRef(new RNAnimated.Value(520)).current;
   const pinchStartDistanceRef = useRef<number | null>(null);
   const pinchHandledRef = useRef(false);
+  const isPinchingRef = useRef(false);
+  const suppressCardPressUntilRef = useRef(0);
 
   const toggleFilter = (id: FilterId) => {
     setActiveFilters((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]));
@@ -329,6 +333,27 @@ export default function AllRestaurantsScreen() {
     if (activeFilters.includes('rating')) list = list.filter((r) => r.rating >= 4.7);
     return list;
   }, [query, activeFilters]);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const saved = await getReservationPreferences();
+      if (!active || !saved) return;
+      const nextTime = timeOptions.includes(saved.time) ? saved.time : timeOptions[0] ?? 'Now';
+      const nextGuests = GUEST_OPTIONS.includes(saved.guests as (typeof GUEST_OPTIONS)[number])
+        ? (saved.guests as (typeof GUEST_OPTIONS)[number])
+        : 2;
+      setReservationDate(saved.date);
+      setReservationTime(nextTime);
+      setReservationGuests(nextGuests);
+      setDraftReservationDate(saved.date);
+      setDraftReservationTime(nextTime);
+      setDraftReservationGuests(nextGuests);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [timeOptions]);
 
   useEffect(() => {
     morphProgress.value = withTiming(detailedCards ? 1 : 0, {
@@ -450,6 +475,10 @@ export default function AllRestaurantsScreen() {
   };
 
   const onTouchStartList: React.ComponentProps<typeof ScrollView>['onTouchStart'] = (e) => {
+    if (e.nativeEvent.touches.length >= 2) {
+      isPinchingRef.current = true;
+      suppressCardPressUntilRef.current = Date.now() + 280;
+    }
     const d = touchDistance(e.nativeEvent.touches);
     if (d == null) return;
     pinchStartDistanceRef.current = d;
@@ -457,6 +486,10 @@ export default function AllRestaurantsScreen() {
   };
 
   const onTouchMoveList: React.ComponentProps<typeof ScrollView>['onTouchMove'] = (e) => {
+    if (e.nativeEvent.touches.length >= 2) {
+      isPinchingRef.current = true;
+      suppressCardPressUntilRef.current = Date.now() + 280;
+    }
     const start = pinchStartDistanceRef.current;
     const d = touchDistance(e.nativeEvent.touches);
     if (start == null || d == null || pinchHandledRef.current) return;
@@ -474,6 +507,8 @@ export default function AllRestaurantsScreen() {
 
   const onTouchEndList: React.ComponentProps<typeof ScrollView>['onTouchEnd'] = (e) => {
     if (e.nativeEvent.touches.length < 2) {
+      isPinchingRef.current = false;
+      suppressCardPressUntilRef.current = Date.now() + 280;
       pinchStartDistanceRef.current = null;
       pinchHandledRef.current = false;
     }
@@ -501,34 +536,19 @@ export default function AllRestaurantsScreen() {
               </Pressable>
             ) : null}
           </View>
-          <Pressable
-            style={styles.bookingSummaryPill}
+          <BookingSummaryPill
+            styles={styles}
+            primaryColor={colors.primary}
+            reservationDate={reservationDate}
+            reservationTime={reservationTime}
+            reservationGuests={reservationGuests}
             onPress={() => {
               setDraftReservationDate(reservationDate);
               setDraftReservationTime(reservationTime);
               setDraftReservationGuests(reservationGuests);
               setReservationModalOpen(true);
             }}
-            accessibilityRole="button"
-            accessibilityLabel="Change date, time and guests">
-            <View style={styles.bookingSummaryItem}>
-              <FontAwesome name="calendar-o" size={13} color={colors.primary} />
-              <Text style={styles.bookingSummaryText}>{reservationDate}</Text>
-              <FontAwesome name="chevron-down" size={12} color={colors.primary} />
-            </View>
-            <View style={styles.bookingSummaryDivider} />
-            <View style={styles.bookingSummaryItem}>
-              <FontAwesome name="clock-o" size={13} color={colors.primary} />
-              <Text style={styles.bookingSummaryText}>{reservationTime}</Text>
-              <FontAwesome name="chevron-down" size={12} color={colors.primary} />
-            </View>
-            <View style={styles.bookingSummaryDivider} />
-            <View style={styles.bookingSummaryItem}>
-              <FontAwesome name="users" size={13} color={colors.primary} />
-              <Text style={styles.bookingSummaryText}>{reservationGuests} guests</Text>
-              <FontAwesome name="chevron-down" size={12} color={colors.primary} />
-            </View>
-          </Pressable>
+          />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
             {FILTERS.map((f) => (
               <Pressable key={f.id} onPress={() => toggleFilter(f.id)} style={[styles.filterChip, activeFilters.includes(f.id) && styles.filterChipActive]}>
@@ -550,7 +570,18 @@ export default function AllRestaurantsScreen() {
           <Animated.View key={restaurant.id} layout={LinearTransition.springify().damping(20).stiffness(320).mass(0.55)}>
             <Pressable
               style={[styles.row, detailedCards && styles.rowDetailed]}
-              onPress={() => router.push({ pathname: '/restaurant/[id]', params: { id: restaurant.id } })}>
+              onPress={() => {
+                if (isPinchingRef.current || Date.now() < suppressCardPressUntilRef.current) return;
+                router.push({
+                  pathname: '/restaurant/[id]',
+                  params: {
+                    id: restaurant.id,
+                    date: reservationDate,
+                    time: reservationTime,
+                    guests: String(reservationGuests),
+                  },
+                });
+              }}>
               <Animated.View style={[styles.rowImgWrap, detailedCards && styles.rowImgWrapDetailed, imageMorphStyle]}>
                 <Image source={{ uri: restaurant.image }} style={styles.rowImg} contentFit="cover" />
               </Animated.View>
@@ -678,6 +709,11 @@ export default function AllRestaurantsScreen() {
                   setReservationDate(draftReservationDate);
                   setReservationTime(draftReservationTime);
                   setReservationGuests(draftReservationGuests);
+                  void setReservationPreferences({
+                    date: draftReservationDate,
+                    time: draftReservationTime,
+                    guests: draftReservationGuests,
+                  });
                   setReservationModalOpen(false);
                 }}>
                 <Text style={styles.pickerBtnPrimaryText}>Apply</Text>

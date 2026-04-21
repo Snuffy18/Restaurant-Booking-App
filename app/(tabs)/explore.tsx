@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, InteractionManager, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BookingSummaryPill } from '@/components/BookingSummaryPill';
 import type { AppColors } from '@/constants/Theme';
 import { FontFamily, Radius, Spacing } from '@/constants/Theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
@@ -19,6 +20,7 @@ import { RESTAURANTS, Restaurant } from '@/data/mockData';
 import { TabScreenFade } from '@/components/TabScreenFade';
 import { consumeExploreSearchFocus } from '@/lib/exploreSearchFocus';
 import { clearLastVisitedRestaurantIds, getLastVisitedRestaurantIds } from '@/lib/lastVisitedRestaurant';
+import { getReservationPreferences, setReservationPreferences } from '@/lib/reservationPreferences';
 
 type SortMode = 'nearest' | 'rating' | 'availability';
 type FilterId = 'tonight' | 'cuisine' | 'price' | 'guests' | 'outdoor' | 'rating';
@@ -667,6 +669,27 @@ export default function ExploreScreen() {
   );
 
   useEffect(() => {
+    let active = true;
+    void (async () => {
+      const saved = await getReservationPreferences();
+      if (!active || !saved) return;
+      const nextTime = timeOptions.includes(saved.time) ? saved.time : timeOptions[0] ?? 'Now';
+      const nextGuests = GUEST_OPTIONS.includes(saved.guests as (typeof GUEST_OPTIONS)[number])
+        ? (saved.guests as (typeof GUEST_OPTIONS)[number])
+        : 2;
+      setReservationDate(saved.date);
+      setReservationTime(nextTime);
+      setReservationGuests(nextGuests);
+      setDraftReservationDate(saved.date);
+      setDraftReservationTime(nextTime);
+      setDraftReservationGuests(nextGuests);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [timeOptions]);
+
+  useEffect(() => {
     if (!query.trim()) {
       setShowSearchSkeleton(false);
       setReservationModalOpen(false);
@@ -727,8 +750,12 @@ export default function ExploreScreen() {
             </Pressable>
           ) : null}
         </View>
-        <Pressable
-          style={styles.bookingSummaryPill}
+        <BookingSummaryPill
+          styles={styles}
+          primaryColor={colors.primary}
+          reservationDate={reservationDate}
+          reservationTime={reservationTime}
+          reservationGuests={reservationGuests}
           onPress={() => {
             setSelectedRestaurantId(null);
             setDraftReservationDate(reservationDate);
@@ -736,26 +763,7 @@ export default function ExploreScreen() {
             setDraftReservationGuests(reservationGuests);
             setReservationModalOpen(true);
           }}
-          accessibilityRole="button"
-          accessibilityLabel="Change date, time and guests">
-          <View style={styles.bookingSummaryItem}>
-            <FontAwesome name="calendar-o" size={13} color={colors.primary} />
-            <Text style={styles.bookingSummaryText}>{reservationDate}</Text>
-            <FontAwesome name="chevron-down" size={12} color={colors.primary} />
-          </View>
-          <View style={styles.bookingSummaryDivider} />
-          <View style={styles.bookingSummaryItem}>
-            <FontAwesome name="clock-o" size={13} color={colors.primary} />
-            <Text style={styles.bookingSummaryText}>{reservationTime}</Text>
-            <FontAwesome name="chevron-down" size={12} color={colors.primary} />
-          </View>
-          <View style={styles.bookingSummaryDivider} />
-          <View style={styles.bookingSummaryItem}>
-            <FontAwesome name="users" size={13} color={colors.primary} />
-            <Text style={styles.bookingSummaryText}>{reservationGuests} guests</Text>
-            <FontAwesome name="chevron-down" size={12} color={colors.primary} />
-          </View>
-        </Pressable>
+        />
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -977,6 +985,11 @@ export default function ExploreScreen() {
                   setReservationDate(draftReservationDate);
                   setReservationTime(draftReservationTime);
                   setReservationGuests(draftReservationGuests);
+                  void setReservationPreferences({
+                    date: draftReservationDate,
+                    time: draftReservationTime,
+                    guests: draftReservationGuests,
+                  });
                   setReservationModalOpen(false);
                   if (selectedRestaurantId) {
                     openRestaurant(selectedRestaurantId, {
