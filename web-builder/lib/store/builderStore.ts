@@ -7,7 +7,7 @@ const MAX_HISTORY = 50
 
 interface BuilderState {
   elements: FloorElement[]
-  selectedId: string | null
+  selectedIds: string[]
   snapToGrid: boolean
   gridSize: number
   scale: number
@@ -17,15 +17,20 @@ interface BuilderState {
   saveStatus: SaveStatus
   currentFloorId: string | null
   floors: Floor[]
+  isDark: boolean
 
   setElements: (elements: FloorElement[]) => void
   addElement: (element: FloorElement) => void
   updateElement: (id: string, updates: Partial<FloorElement>) => void
+  updateElements: (updates: { id: string; updates: Partial<FloorElement> }[]) => void
   deleteElement: (id: string) => void
+  deleteSelected: () => void
   selectElement: (id: string | null) => void
+  selectElements: (ids: string[]) => void
   toggleSnap: () => void
   setScale: (scale: number) => void
   setStagePos: (pos: { x: number; y: number }) => void
+  toggleDark: () => void
   undo: () => void
   redo: () => void
   setSaveStatus: (status: SaveStatus) => void
@@ -36,7 +41,7 @@ interface BuilderState {
 
 export const useBuilderStore = create<BuilderState>((set, get) => ({
   elements: [],
-  selectedId: null,
+  selectedIds: [],
   snapToGrid: true,
   gridSize: 20,
   scale: 1,
@@ -46,12 +51,12 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   saveStatus: 'idle',
   currentFloorId: null,
   floors: [],
+  isDark: (() => { try { return localStorage.getItem('builder-dark') === 'true' } catch { return false } })(),
 
   pushHistory: () => {
     const { elements, past } = get()
     const snapshot = elements.map((el) => ({ ...el }))
-    const newPast = [...past, snapshot].slice(-MAX_HISTORY)
-    set({ past: newPast, future: [] })
+    set({ past: [...past, snapshot].slice(-MAX_HISTORY), future: [] })
   },
 
   setElements: (elements) => set({ elements }),
@@ -64,9 +69,19 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   updateElement: (id, updates) => {
     get().pushHistory()
     set((state) => ({
-      elements: state.elements.map((el) =>
-        el.id === id ? { ...el, ...updates } : el
-      ),
+      elements: state.elements.map((el) => el.id === id ? { ...el, ...updates } : el),
+    }))
+  },
+
+  updateElements: (updates) => {
+    if (updates.length === 0) return
+    get().pushHistory()
+    const map = new Map(updates.map((u) => [u.id, u.updates]))
+    set((state) => ({
+      elements: state.elements.map((el) => {
+        const u = map.get(el.id)
+        return u ? { ...el, ...u } : el
+      }),
     }))
   },
 
@@ -74,11 +89,24 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     get().pushHistory()
     set((state) => ({
       elements: state.elements.filter((el) => el.id !== id),
-      selectedId: state.selectedId === id ? null : state.selectedId,
+      selectedIds: state.selectedIds.filter((sid) => sid !== id),
     }))
   },
 
-  selectElement: (id) => set({ selectedId: id }),
+  deleteSelected: () => {
+    const { selectedIds } = get()
+    if (selectedIds.length === 0) return
+    get().pushHistory()
+    const toDelete = new Set(selectedIds)
+    set((state) => ({
+      elements: state.elements.filter((el) => !toDelete.has(el.id)),
+      selectedIds: [],
+    }))
+  },
+
+  selectElement: (id) => set({ selectedIds: id ? [id] : [] }),
+
+  selectElements: (ids) => set({ selectedIds: ids }),
 
   toggleSnap: () => set((state) => ({ snapToGrid: !state.snapToGrid })),
 
@@ -86,16 +114,21 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
   setStagePos: (stagePos) => set({ stagePos }),
 
+  toggleDark: () => {
+    const next = !get().isDark
+    set({ isDark: next })
+    try { localStorage.setItem('builder-dark', String(next)) } catch { /* */ }
+  },
+
   undo: () => {
     const { past, elements, future } = get()
     if (past.length === 0) return
     const previous = past[past.length - 1]
-    const newPast = past.slice(0, -1)
     set({
       elements: previous,
-      past: newPast,
+      past: past.slice(0, -1),
       future: [elements.map((el) => ({ ...el })), ...future].slice(0, MAX_HISTORY),
-      selectedId: null,
+      selectedIds: [],
     })
   },
 
@@ -103,12 +136,11 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     const { past, elements, future } = get()
     if (future.length === 0) return
     const next = future[0]
-    const newFuture = future.slice(1)
     set({
       elements: next,
       past: [...past, elements.map((el) => ({ ...el }))].slice(-MAX_HISTORY),
-      future: newFuture,
-      selectedId: null,
+      future: future.slice(1),
+      selectedIds: [],
     })
   },
 
