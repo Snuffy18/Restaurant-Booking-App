@@ -20,23 +20,6 @@ export default async function AdminPage() {
   const userMap: Record<string, string> = {}
   for (const u of users ?? []) userMap[u.id] = u.email ?? u.id
 
-  async function createRestaurant(formData: FormData) {
-    'use server'
-    const name = (formData.get('name') as string)?.trim()
-    const ownerId = (formData.get('owner_id') as string)?.trim()
-    if (!name) return
-
-    const supabase = await createClient()
-    const { data: newR } = await supabase
-      .from('restaurants')
-      .insert({ name, owner_id: ownerId || null })
-      .select('id')
-      .single()
-
-    if (newR?.id) redirect(`/builder/${newR.id}`)
-    else redirect('/admin')
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
@@ -61,7 +44,7 @@ export default async function AdminPage() {
         </div>
 
         {/* Create form */}
-        <CreateRestaurantForm users={users ?? []} action={createRestaurant} />
+        <CreateRestaurantForm users={users ?? []} />
 
         {/* Restaurant list */}
         {restaurants && restaurants.length > 0 ? (
